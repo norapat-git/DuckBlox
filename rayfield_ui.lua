@@ -141,12 +141,59 @@ MiscTab:CreateButton({
         if hum then
             hum.WalkSpeed = 16
             hum.JumpPower = 50
-            Rayfield:Notify({
-                Title = "Reset Completed",
-                Content = "ค่าตัวละครถูกคืนค่าเป็นปกติแล้ว",
-                Duration = 2.5,
-                Image = 4483362458,
-            })
         end
     end,
 })
+-- ========================================================
+-- TAB 3: Minigame Test (ทดสอบมินิเกม)
+-- ========================================================
+local MinigameTab = Window:CreateTab("Minigame", 4483362458)
+
+MinigameTab:CreateSection("Power Shot (4 Shots / 0.75s)")
+
+local isMinigameRunning = false
+
+MinigameTab:CreateButton({
+    Name = "🎯 Trigger 4-Shot Sequence (0.75s)",
+    Callback = function()
+        if isMinigameRunning then
+            Rayfield:Notify({
+                Title = "Warning",
+                Content = "กำลังทำงานอยู่ กรุณารอสักครู่...",
+                Duration = 2,
+                Image = 4483362458,
+            })
+            return
+        end
+
+        isMinigameRunning = true
+        task.spawn(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local actionRemote = ReplicatedStorage:WaitForChild("MinigameAction", 3)
+
+            Rayfield:Notify({
+                Title = "Minigame Started",
+                Content = "เริ่มยิง 4 จังหวะ (รอบละ 0.75 วินาที)",
+                Duration = 2,
+                Image = 4483362458,
+            })
+
+            for shot = 1, 4 do
+                task.wait(0.75)
+                if actionRemote and actionRemote:IsA("RemoteEvent") then
+                    actionRemote:FireServer(shot, 0.75)
+                end
+                print(("[Rayfield UI] ยิงครั้งที่ %d/4 (0.75s)"):format(shot))
+            end
+
+            Rayfield:Notify({
+                Title = "Completed",
+                Content = "ยิงครบ 4 ครั้งเรียบร้อยแล้ว",
+                Duration = 2.5,
+                Image = 4483362458,
+            })
+            isMinigameRunning = false
+        end)
+    end,
+})
+

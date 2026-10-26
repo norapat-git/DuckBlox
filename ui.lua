@@ -278,6 +278,33 @@ createButton("🔄 Reset Stats (ปกติ)", Color3.fromRGB(240, 71, 71), fun
     end
 end)
 
+local isMinigameRunning = false
+createButton("🎯 Trigger Minigame (4x 0.75s)", Color3.fromRGB(155, 89, 182), function()
+    if isMinigameRunning then
+        print("[UI] กำลังทำงานอยู่...")
+        return
+    end
+
+    isMinigameRunning = true
+    task.spawn(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local actionRemote = ReplicatedStorage:WaitForChild("MinigameAction", 3)
+
+        print("[UI] เริ่มต้นส่งคำสั่งมินิเกม 4 จังหวะ...")
+
+        for shot = 1, 4 do
+            task.wait(0.75)
+            if actionRemote and actionRemote:IsA("RemoteEvent") then
+                actionRemote:FireServer(shot, 0.75)
+            end
+            print(("[UI] ยิงครั้งที่ %d/4 สำเร็จ"):format(shot))
+        end
+
+        print("[UI] ยิงครบ 4 ครั้งเรียบร้อยแล้ว")
+        isMinigameRunning = false
+    end)
+end)
+
 createButton("🔔 Send Notification", Color3.fromRGB(250, 166, 26), function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Hello!",
