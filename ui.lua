@@ -278,9 +278,48 @@ createButton("🔄 Reset Stats (ปกติ)", Color3.fromRGB(240, 71, 71), fun
     end
 end)
 
+local isAutoMinigame = false
+local autoButton = nil
+autoButton = createButton("🤖 Auto Minigame: OFF", Color3.fromRGB(100, 100, 115), function()
+    isAutoMinigame = not isAutoMinigame
+    if isAutoMinigame then
+        autoButton.Text = "🤖 Auto Minigame: ON (ทำงานอยู่)"
+        autoButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        print("[UI] เปิดระบบ Auto Minigame แล้ว")
+
+        task.spawn(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            while isAutoMinigame do
+                local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
+                    or ReplicatedStorage:WaitForChild("MinigameAction", 3)
+
+                if not actionRemote then
+                    task.wait(2)
+                else
+                    for shot = 1, 4 do
+                        if not isAutoMinigame then break end
+                        task.wait(0.75)
+                        if actionRemote and actionRemote:IsA("RemoteEvent") then
+                            actionRemote:FireServer(shot, 0.75)
+                        end
+                        print(("[UI] [Auto] ยิงครั้งที่ %d/4"):format(shot))
+                    end
+
+                    if not isAutoMinigame then break end
+                    task.wait(2) -- รอเริ่มรอบถัดไป
+                end
+            end
+        end)
+    else
+        autoButton.Text = "🤖 Auto Minigame: OFF"
+        autoButton.BackgroundColor3 = Color3.fromRGB(100, 100, 115)
+        print("[UI] ปิดระบบ Auto Minigame แล้ว")
+    end
+end)
+
 local isMinigameRunning = false
-createButton("🎯 Trigger Minigame (4x 0.75s)", Color3.fromRGB(155, 89, 182), function()
-    if isMinigameRunning then
+createButton("🎯 Trigger Minigame (1 รอบ 4x 0.75s)", Color3.fromRGB(155, 89, 182), function()
+    if isMinigameRunning or isAutoMinigame then
         print("[UI] กำลังทำงานอยู่...")
         return
     end
@@ -288,7 +327,8 @@ createButton("🎯 Trigger Minigame (4x 0.75s)", Color3.fromRGB(155, 89, 182), f
     isMinigameRunning = true
     task.spawn(function()
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local actionRemote = ReplicatedStorage:WaitForChild("MinigameAction", 3)
+        local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
+            or ReplicatedStorage:WaitForChild("MinigameAction", 3)
 
         print("[UI] เริ่มต้นส่งคำสั่งมินิเกม 4 จังหวะ...")
 

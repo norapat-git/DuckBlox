@@ -145,54 +145,139 @@ MiscTab:CreateButton({
     end,
 })
 -- ========================================================
--- TAB 3: Minigame Test (ทดสอบมินิเกม)
+-- TAB 3: Minigame (ระบบมินิเกม & Auto Farm)
 -- ========================================================
 local MinigameTab = Window:CreateTab("Minigame", 4483362458)
 
-MinigameTab:CreateSection("Power Shot (4 Shots / 0.75s)")
+MinigameTab:CreateSection("Auto Minigame (ฟาร์มอัตโนมัติ)")
 
-local isMinigameRunning = false
+local autoMinigameEnabled = false
+local shotInterval = 0.75
+local roundDelay = 2.0
+local isSingleRunning = false
 
-MinigameTab:CreateButton({
-    Name = "🎯 Trigger 4-Shot Sequence (0.75s)",
-    Callback = function()
-        if isMinigameRunning then
+-- สวิตช์เปิด/ปิด Auto Minigame (วนลูปอัตโนมัติ)
+MinigameTab:CreateToggle({
+    Name = "🤖 Auto Minigame (เปิด/ปิด ออโต้ลูป)",
+    CurrentValue = false,
+    Flag = "AutoMinigameFlag",
+    Callback = function(Value)
+        autoMinigameEnabled = Value
+        if Value then
             Rayfield:Notify({
-                Title = "Warning",
-                Content = "กำลังทำงานอยู่ กรุณารอสักครู่...",
+                Title = "Auto Minigame Started",
+                Content = "เปิดระบบเล่นมินิเกมอัตโนมัติแล้ว",
+                Duration = 2.5,
+                Image = 4483362458,
+            })
+
+            task.spawn(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                while autoMinigameEnabled do
+                    local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
+                        or ReplicatedStorage:WaitForChild("MinigameAction", 3)
+
+                    if not actionRemote then
+                        warn("[Rayfield UI] ไม่พบ RemoteEvent 'MinigameAction' ใน ReplicatedStorage")
+                        task.wait(2)
+                    else
+                        -- ยิง 4 จังหวะ
+                        for shot = 1, 4 do
+                            if not autoMinigameEnabled then break end
+                            task.wait(shotInterval)
+                            if actionRemote and actionRemote:IsA("RemoteEvent") then
+                                actionRemote:FireServer(shot, shotInterval)
+                            end
+                            print(("[Rayfield UI] [Auto] ยิงครั้งที่ %d/4 (%.2fs)"):format(shot, shotInterval))
+                        end
+
+                        if not autoMinigameEnabled then break end
+                        -- รอเริ่มรอบใหม่
+                        task.wait(roundDelay)
+                    end
+                end
+            end)
+        else
+            Rayfield:Notify({
+                Title = "Auto Minigame Stopped",
+                Content = "ปิดระบบมินิเกมอัตโนมัติแล้ว",
+                Duration = 2,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- ปรับความเร็วจังหวะการยิงต่อครั้ง
+MinigameTab:CreateSlider({
+    Name = "Shot Interval (ดีเลย์จังหวะยิง)",
+    Range = {0.2, 2.0},
+    Increment = 0.05,
+    Suffix = " วิ",
+    CurrentValue = 0.75,
+    Flag = "ShotIntervalFlag",
+    Callback = function(Value)
+        shotInterval = Value
+    end,
+})
+
+-- ปรับดีเลย์พักระหว่างแต่ละรอบ
+MinigameTab:CreateSlider({
+    Name = "Round Delay (เวลาพักระหว่างรอบ)",
+    Range = {0.5, 5.0},
+    Increment = 0.5,
+    Suffix = " วิ",
+    CurrentValue = 2.0,
+    Flag = "RoundDelayFlag",
+    Callback = function(Value)
+        roundDelay = Value
+    end,
+})
+
+MinigameTab:CreateSection("Manual Trigger (ทดสอบยิง 1 รอบ)")
+
+-- ปุ่มยิง 1 รอบแบบกดมือ
+MinigameTab:CreateButton({
+    Name = "🎯 Trigger 1 Sequence (4 Shots)",
+    Callback = function()
+        if isSingleRunning or autoMinigameEnabled then
+            Rayfield:Notify({
+                Title = "Notice",
+                Content = "ระบบกำลังทำงานอยู่ กรุณารอสักครู่...",
                 Duration = 2,
                 Image = 4483362458,
             })
             return
         end
 
-        isMinigameRunning = true
+        isSingleRunning = true
         task.spawn(function()
             local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            local actionRemote = ReplicatedStorage:WaitForChild("MinigameAction", 3)
+            local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
+                or ReplicatedStorage:WaitForChild("MinigameAction", 3)
 
             Rayfield:Notify({
                 Title = "Minigame Started",
-                Content = "เริ่มยิง 4 จังหวะ (รอบละ 0.75 วินาที)",
+                Content = ("เริ่มยิง 4 จังหวะ (รอบละ %.2f วินาที)"):format(shotInterval),
                 Duration = 2,
                 Image = 4483362458,
             })
 
             for shot = 1, 4 do
-                task.wait(0.75)
+                task.wait(shotInterval)
                 if actionRemote and actionRemote:IsA("RemoteEvent") then
-                    actionRemote:FireServer(shot, 0.75)
+                    actionRemote:FireServer(shot, shotInterval)
                 end
-                print(("[Rayfield UI] ยิงครั้งที่ %d/4 (0.75s)"):format(shot))
+                print(("[Rayfield UI] ยิงครั้งที่ %d/4 (%.2fs)"):format(shot, shotInterval))
             end
 
             Rayfield:Notify({
                 Title = "Completed",
                 Content = "ยิงครบ 4 ครั้งเรียบร้อยแล้ว",
-                Duration = 2.5,
+                Duration = 2,
                 Image = 4483362458,
             })
-            isMinigameRunning = false
+            isSingleRunning = false
         end)
     end,
 })

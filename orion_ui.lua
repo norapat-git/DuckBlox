@@ -106,5 +106,90 @@ PlayerTab:AddButton({
     end    
 })
 
+-- ========================================================
+-- TAB: Minigame (ระบบมินิเกม)
+-- ========================================================
+local MinigameTab = Window:MakeTab({
+    Name = "Minigame",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
+})
+
+MinigameTab:AddSection({
+    Name = "Auto Minigame"
+})
+
+local autoMinigameOrion = false
+MinigameTab:AddToggle({
+    Name = "🤖 Auto Minigame (เล่นวนลูป)",
+    Default = false,
+    Callback = function(Value)
+        autoMinigameOrion = Value
+        if Value then
+            OrionLib:MakeNotification({
+                Name = "Auto Minigame",
+                Content = "เปิดระบบเล่นมินิเกมอัตโนมัติแล้ว",
+                Image = "rbxassetid://4483362458",
+                Time = 2.5
+            })
+
+            task.spawn(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                while autoMinigameOrion do
+                    local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
+                        or ReplicatedStorage:WaitForChild("MinigameAction", 3)
+
+                    if not actionRemote then
+                        task.wait(2)
+                    else
+                        for shot = 1, 4 do
+                            if not autoMinigameOrion then break end
+                            task.wait(0.75)
+                            if actionRemote and actionRemote:IsA("RemoteEvent") then
+                                actionRemote:FireServer(shot, 0.75)
+                            end
+                            print(("[Orion UI] [Auto] ยิงครั้งที่ %d/4"):format(shot))
+                        end
+
+                        if not autoMinigameOrion then break end
+                        task.wait(2)
+                    end
+                end
+            end)
+        else
+            OrionLib:MakeNotification({
+                Name = "Auto Minigame",
+                Content = "ปิดระบบมินิเกมแล้ว",
+                Image = "rbxassetid://4483362458",
+                Time = 2
+            })
+        end
+    end    
+})
+
+local isOrionSingleRunning = false
+MinigameTab:AddButton({
+    Name = "🎯 Trigger 1 Sequence (4 Shots)",
+    Callback = function()
+        if isOrionSingleRunning or autoMinigameOrion then return end
+        isOrionSingleRunning = true
+
+        task.spawn(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
+                or ReplicatedStorage:WaitForChild("MinigameAction", 3)
+
+            for shot = 1, 4 do
+                task.wait(0.75)
+                if actionRemote and actionRemote:IsA("RemoteEvent") then
+                    actionRemote:FireServer(shot, 0.75)
+                end
+            end
+            isOrionSingleRunning = false
+        end)
+    end
+})
+
 -- ต้องเรียก Init ตอนท้ายสุดเพื่อให้ Orion โหลดหน้าต่างขึ้นมา
 OrionLib:Init()
+
