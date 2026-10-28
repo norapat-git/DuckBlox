@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
@@ -679,139 +680,241 @@ local function stepDodge()
     prevNeedleX = needleX
 end
 
-local COMBAT_CONFIG = {
-    ActionDelay = 0.5,
-    PrioritizeSkills = true,
-    CombatGuiKeywords = {"Combat", "Battle", "Fight", "Turn", "Match", "Action", "Dungeon", "Duel"},
-    AttackNames = {
-        "Attack", "AttackBtn", "BasicAttack", "NormalAttack", "Strike",
-        "Hit", "Slash", "Punch", "Shoot", "Fire", "ActionButton", "Primary"
-    },
-    SkillNames = {
-        "Skill", "Skill1", "Skill2", "Skill3", "Skill4", "SkillBtn",
-        "Ability", "Ability1", "Ability2", "Ability3",
-        "Spell", "Magic", "Special", "Burst", "Ultimate"
-    },
-    TargetNames = {"Target", "Select", "Confirm", "Enemy", "Opponent", "LockOn"},
-}
-
 local function clickGuiButton(button)
     if not button or not button:IsA("GuiObject") then return false end
+
+    local targetBtn = button
+    if not targetBtn:IsA("GuiButton") and targetBtn.Parent and targetBtn.Parent:IsA("GuiButton") then
+        targetBtn = targetBtn.Parent
+    end
+
+    pcall(function()
+        if typeof(firesignal) == "function" and targetBtn:IsA("GuiButton") then
+            pcall(firesignal, targetBtn.MouseButton1Click)
+            pcall(firesignal, targetBtn.Activated)
+        end
+    end)
+
     local pos = button.AbsolutePosition
     local size = button.AbsoluteSize
-    local centerX = pos.X + (size.X / 2)
-    local centerY = pos.Y + (size.Y / 2)
+    local screenGui = button:FindFirstAncestorOfClass("ScreenGui")
+    local insetY = (screenGui and screenGui.IgnoreGuiInset) and 0 or GuiService:GetGuiInset().Y
+
+    local centerX = pos.X + (size.X * 0.5)
+    local centerY = pos.Y + (size.Y * 0.5) + insetY
 
     pcall(function()
         VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
-        task.wait(0.015)
+        task.wait(0.02)
         VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
     end)
     return true
 end
 
-local function isSkillReady(button)
-    if not button.Visible then return false end
-
-    if button:IsA("TextButton") then
-        local txt = button.Text:gsub("%s+", "")
-        if tonumber(txt) or txt:match("^%d+%.?%d*s?$") then
-            return false
-        end
-    end
-
-    for _, child in ipairs(button:GetDescendants()) do
-        if child:IsA("GuiObject") and child.Visible then
-            local cname = child.Name:lower()
-            if (cname:find("cooldown") or cname:find("cd") or cname:find("mask")) and child.BackgroundTransparency < 0.9 then
-                return false
-            end
-            if child:IsA("TextLabel") and child.Visible then
-                local ltxt = child.Text:gsub("%s+", "")
-                if tonumber(ltxt) or ltxt:match("^%d+%.?%d*s?$") then
-                    return false
-                end
-            end
-        end
-    end
-
-    return true
+local function isBlueSkillPipColor(c)
+    if not c then return false end
+    return (c.B > 0.78) and (c.G > 0.58) and (c.R < 0.55)
 end
 
-local function getActiveCombatGui()
+local function cleanMenuText(rawText)
+    if not rawText then return "" end
+    local stripped = rawText:gsub("<[^>]+>", ""):upper()
+    stripped = stripped:gsub("^[^%w]+", ""):gsub("[^%w]+$", "")
+    return stripped
+end
+
+local function scanCombatMenu()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
 
+    local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1024, 768)
+    local attackBtn = nil
+    local skillsBtn = nil
+    local combatGui = nil
+    local parsedEN = nil
+    local bluePipFound = false
+
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
-            local lname = gui.Name:lower()
-            for _, kw in ipairs(COMBAT_CONFIG.CombatGuiKeywords) do
-                if lname:find(kw:lower()) then
-                    return gui
+            for _, obj in ipairs(gui:GetDescendants()) do
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    if obj.Visible then
+                        local raw = obj.Text or ""
+                        local upper = raw:upper()
+
+                        local enMatch = upper:match("EN%s*(%d+)%s*/%s*%d+")
+                        if enMatch and isActuallyVisible(obj) then
+                            parsedEN = tonumber(enMatch)
+                        end
+
+                        local cleaned = cleanMenuText(raw)
+                        if cleaned == "ATTACK" and obj.AbsolutePosition.X < (vp.X * 0.35) and obj.AbsolutePosition.Y > (vp.Y * 0.50) then
+                            if isActuallyVisible(obj) then
+                                attackBtn = obj
+                                combatGui = gui
+                            end
+                        elseif cleaned == "SKILLS" and obj.AbsolutePosition.X < (vp.X * 0.35) and obj.AbsolutePosition.Y > (vp.Y * 0.50) then
+                            if isActuallyVisible(obj) then
+                                skillsBtn = obj
+                                combatGui = gui
+                            end
+                        elseif cleaned == "EN" and obj.AbsolutePosition.Y < (vp.Y * 0.60) and isActuallyVisible(obj) then
+                            local statusContainer = obj.Parent and obj.Parent.Parent or obj.Parent
+                            if statusContainer then
+                                for _, sub in ipairs(statusContainer:GetDescendants()) do
+                                    if sub:IsA("GuiObject") and not sub:IsA("TextLabel") and sub.Visible and sub.BackgroundTransparency < 0.5 then
+                                        if sub.AbsoluteSize.X >= 2 and sub.AbsoluteSize.X <= 30 and math.abs(sub.AbsolutePosition.Y - obj.AbsolutePosition.Y) <= 14 then
+                                            if isBlueSkillPipColor(sub.BackgroundColor3) and isActuallyVisible(sub) then
+                                                bluePipFound = true
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
             end
         end
     end
 
-    for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Enabled then
-            for _, attName in ipairs(COMBAT_CONFIG.AttackNames) do
-                local found = gui:FindFirstChild(attName, true)
-                if found and found:IsA("GuiObject") and isActuallyVisible(found) then
-                    return gui
+    if not combatGui or (not attackBtn and not skillsBtn) then
+        return nil
+    end
+
+    local currentEN = 0
+    if parsedEN ~= nil then
+        currentEN = parsedEN
+    elseif bluePipFound then
+        currentEN = 1
+    end
+
+    return {
+        gui = combatGui,
+        attackBtn = attackBtn,
+        skillsBtn = skillsBtn,
+        currentEN = currentEN,
+        hasBluePoints = (currentEN > 0) or bluePipFound,
+    }
+end
+
+local function isDescriptionOrSystemText(txt)
+    if #txt < 2 or #txt > 34 then return true end
+    if txt:find("SCALES WITH") or txt:find("IGNORES") or txt:find("LOOSE AN") or txt:find("DEALS ") then return true end
+    if txt:find("^LV%s*%d+") or txt:find("^EN%s*%d+") or txt:find("^%d+%.?%d*K?/") then return true end
+    if txt == "PARTY" or txt:find("^FOES") or txt == "ATTACK" or txt == "SKILLS" or txt == "SCROLL" or txt == "GUARD" or txt == "MEDITATE" or txt:find("^SATCHEL") or txt == "BACK" or txt == "CANCEL" then
+        return true
+    end
+    local playerName = LocalPlayer.Name:upper()
+    local displayName = LocalPlayer.DisplayName:upper()
+    if txt == playerName or txt == displayName then return true end
+    return false
+end
+
+local function getCenterPanelOptions(combatGui, currentEN)
+    local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1024, 768)
+    local minX = vp.X * 0.14
+    local maxX = vp.X * 0.74
+    local minY = vp.Y * 0.58
+
+    local buttonOptions = {}
+    local labelOptions = {}
+
+    for _, obj in ipairs(combatGui:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible then
+            local pos = obj.AbsolutePosition
+            local size = obj.AbsoluteSize
+            if pos.X >= minX and pos.X <= maxX and pos.Y >= minY and size.X >= 20 and size.Y >= 12 and size.Y <= 70 then
+                if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+                    local txt = obj:IsA("TextButton") and cleanMenuText(obj.Text) or ""
+                    if txt == "" then
+                        for _, child in ipairs(obj:GetDescendants()) do
+                            if child:IsA("TextLabel") and child.Visible then
+                                local ctxt = cleanMenuText(child.Text)
+                                if ctxt ~= "" and not isDescriptionOrSystemText(ctxt) then
+                                    txt = ctxt
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    if not isDescriptionOrSystemText(txt) and isActuallyVisible(obj) then
+                        local costMatch = (obj:IsA("TextButton") and obj.Text:upper():match("(%d+)%s*EN")) or nil
+                        if not costMatch or not currentEN or tonumber(costMatch) <= currentEN then
+                            table.insert(buttonOptions, obj)
+                        end
+                    end
+                elseif obj:IsA("TextLabel") then
+                    local raw = obj.Text or ""
+                    local txt = cleanMenuText(raw)
+                    if not isDescriptionOrSystemText(txt) and raw == raw:upper() and isActuallyVisible(obj) then
+                        local costMatch = raw:upper():match("(%d+)%s*EN")
+                        if not costMatch or not currentEN or tonumber(costMatch) <= currentEN then
+                            table.insert(labelOptions, obj)
+                        end
+                    end
                 end
             end
         end
     end
 
-    return nil
+    if #buttonOptions > 0 then
+        return buttonOptions
+    end
+    return labelOptions
+end
+
+local function executeBasicAttack(menuState)
+    if not menuState or not menuState.attackBtn then return end
+    clickGuiButton(menuState.attackBtn)
+    task.wait(0.14)
+    if bowCache.active or dodgeCache.active then return end
+
+    local centerOpts = getCenterPanelOptions(menuState.gui, menuState.currentEN)
+    if #centerOpts > 0 then
+        clickGuiButton(centerOpts[1])
+        task.wait(0.1)
+    else
+        clickGuiButton(menuState.attackBtn)
+    end
 end
 
 local combatThread = task.spawn(function()
     while isRunning and ScreenGui.Parent do
         if autoCombatEnabled and not bowCache.active and not dodgeCache.active then
-            local combatGui = getActiveCombatGui()
-            if combatGui then
-                local actionDone = false
+            local menuState = scanCombatMenu()
+            if menuState then
+                if menuState.hasBluePoints and menuState.skillsBtn then
+                    clickGuiButton(menuState.skillsBtn)
+                    task.wait(0.2)
 
-                if COMBAT_CONFIG.PrioritizeSkills then
-                    for _, sName in ipairs(COMBAT_CONFIG.SkillNames) do
-                        if bowCache.active or dodgeCache.active then break end
-                        local skillBtn = combatGui:FindFirstChild(sName, true)
-                        if skillBtn and skillBtn:IsA("GuiObject") and isActuallyVisible(skillBtn) and isSkillReady(skillBtn) then
-                            clickGuiButton(skillBtn)
-                            actionDone = true
-                            task.wait(0.2)
-                            break
+                    if not bowCache.active and not dodgeCache.active then
+                        local skillOptions = getCenterPanelOptions(menuState.gui, menuState.currentEN)
+                        if #skillOptions > 0 then
+                            local chosenSkill = skillOptions[math.random(1, #skillOptions)]
+                            clickGuiButton(chosenSkill)
+                            task.wait(0.12)
+                            if not bowCache.active and not dodgeCache.active and isActuallyVisible(chosenSkill) then
+                                clickGuiButton(chosenSkill)
+                            end
+                            task.wait(0.25)
+                        end
+
+                        if not bowCache.active and not dodgeCache.active then
+                            local afterCheck = scanCombatMenu()
+                            if afterCheck and afterCheck.attackBtn then
+                                executeBasicAttack(afterCheck)
+                            end
                         end
                     end
+                elseif menuState.attackBtn then
+                    executeBasicAttack(menuState)
                 end
 
-                if not actionDone and not bowCache.active and not dodgeCache.active then
-                    for _, aName in ipairs(COMBAT_CONFIG.AttackNames) do
-                        local atkBtn = combatGui:FindFirstChild(aName, true)
-                        if atkBtn and atkBtn:IsA("GuiObject") and isActuallyVisible(atkBtn) then
-                            clickGuiButton(atkBtn)
-                            actionDone = true
-                            break
-                        end
-                    end
-                end
-
-                if not bowCache.active and not dodgeCache.active then
-                    task.wait(0.12)
-                    for _, tName in ipairs(COMBAT_CONFIG.TargetNames) do
-                        local targetBtn = combatGui:FindFirstChild(tName, true)
-                        if targetBtn and targetBtn:IsA("GuiObject") and isActuallyVisible(targetBtn) then
-                            clickGuiButton(targetBtn)
-                            break
-                        end
-                    end
-                end
-
-                task.wait(COMBAT_CONFIG.ActionDelay)
+                task.wait(0.45)
             else
-                task.wait(0.5)
+                task.wait(0.25)
             end
         else
             task.wait(0.15)
