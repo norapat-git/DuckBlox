@@ -39,28 +39,6 @@ end
 
 globalEnv.DuckBloxMinigameCleanup = cleanup
 
-local currentShot = 0
-local lastTriggerTime = 0
-local hasResetToBottom = true
-local prevBowCenterY = nil
-
-local lastDodgeTrigger = 0
-local prevNeedleX = nil
-local dodgeHasReset = true
-
-local bowCache = {
-    active = false,
-    goldBand = nil,
-    gaugeFrame = nil,
-    indicator = nil,
-}
-
-local dodgeCache = {
-    active = false,
-    needle = nil,
-    whiteZone = nil,
-}
-
 local activeDefenseClient = nil
 local activeQTE = nil
 local activeWarriorTiming = nil
@@ -90,7 +68,45 @@ local function initGameFrameworkHooks()
                 if typeof(rawRun) == "function" then
                     QTE._run = function(self, ...)
                         activeQTE = self
-                        return rawRun(self, ...)
+                        local res = rawRun(self, ...)
+                        if CONFIG.Enabled then
+                            task.spawn(function()
+                                while CONFIG.Enabled and isRunning do
+                                    local isQTERunning = false
+                                    pcall(function()
+                                        if typeof(self.IsRunning) == "function" then
+                                            isQTERunning = self:IsRunning()
+                                        end
+                                    end)
+                                    if not isQTERunning then break end
+                                    task.wait(0.08)
+                                    pcall(function()
+                                        if typeof(self._press) == "function" then
+                                            self:_press()
+                                        end
+                                    end)
+                                end
+                            end)
+                        end
+                        return res
+                    end
+                end
+                local rawDefense = QTE._defense
+                if typeof(rawDefense) == "function" then
+                    QTE._defense = function(self, ...)
+                        activeQTE = self
+                        local res = rawDefense(self, ...)
+                        if CONFIG.Enabled then
+                            task.spawn(function()
+                                task.wait(0.08)
+                                pcall(function()
+                                    if typeof(self._press) == "function" then
+                                        self:_press()
+                                    end
+                                end)
+                            end)
+                        end
+                        return res
                     end
                 end
                 local rawGradeAt = QTE._gradeAt
@@ -236,7 +252,18 @@ local function initGameFrameworkHooks()
                 if typeof(rawStart) == "function" then
                     DTC.Start = function(self, ...)
                         activeDefenseClient = self
-                        return rawStart(self, ...)
+                        local res = rawStart(self, ...)
+                        if CONFIG.Enabled then
+                            task.spawn(function()
+                                task.wait(0.08)
+                                pcall(function()
+                                    if typeof(self.Press) == "function" then
+                                        self:Press()
+                                    end
+                                end)
+                            end)
+                        end
+                        return res
                     end
                 end
                 local rawResolve = DTC.Resolve
@@ -275,13 +302,6 @@ local function notify(title, text)
 end
 
 local function triggerPerfectHit()
-    task.spawn(function()
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-            task.wait(0.02)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-        end)
-    end)
 end
 
 local function isActuallyVisible(obj)
@@ -636,10 +656,6 @@ local function checkDodgeAlignment()
     prevNeedleX = needleX
 end
 
-table.insert(activeConnections, RunService.RenderStepped:Connect(function()
-    checkPowerShotAlignment()
-    checkDodgeAlignment()
-end))
 
 table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
