@@ -339,6 +339,9 @@ local activeWarriorTiming = nil
 local activeThiefTiming = nil
 local activeMageTiming = nil
 local activeCommandMenu = nil
+local activeRunMapView = nil
+local autoPlayEnabled = false
+local lastAutoPlayAction = 0
 
 local function initGameFrameworkHooks()
     pcall(function()
@@ -544,6 +547,22 @@ local function initGameFrameworkHooks()
                             activeDefenseClient = nil
                         end
                         return rawDestroy(self, ...)
+                    end
+                end
+            end
+        end
+
+        local runMapMod = pbc:FindFirstChild("RunMapView")
+        if runMapMod then
+            local RMV = require(runMapMod)
+            if typeof(RMV) == "table" and not RMV._duckbloxHooked then
+                RMV._duckbloxHooked = true
+                local rawNew = RMV.new
+                if typeof(rawNew) == "function" then
+                    RMV.new = function(...)
+                        local inst = rawNew(...)
+                        activeRunMapView = inst
+                        return inst
                     end
                 end
             end
@@ -1331,6 +1350,159 @@ local combatThread = task.spawn(function()
 end)
 table.insert(activeThreads, combatThread)
 
+local function isDuckBloxGui(obj)
+    local cur = obj
+    while cur do
+        if typeof(cur.Name) == "string" and cur.Name:find("DuckBlox") then
+            return true
+        end
+        cur = cur.Parent
+    end
+    return false
+end
+
+local function checkAndClickContinue(playerGui)
+    local continueKeywords = {
+        "CONTINUE", "CLAIM", "COLLECT", "NEXT", "PROCEED", "VICTORY", "DONE",
+        "ADVANCE", "OK", "TAP TO CONTINUE", "CLICK TO CONTINUE", "ACCEPT", "READY"
+    }
+
+    local bestButton = nil
+    local bestPriority = 999
+
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled and not isDuckBloxGui(gui) then
+            for _, obj in ipairs(gui:GetDescendants()) do
+                if (obj:IsA("TextButton") or obj:IsA("ImageButton")) and isActuallyVisible(obj) then
+                    local name = obj.Name:upper()
+                    local txt = obj:IsA("TextButton") and cleanMenuText(obj.Text) or ""
+
+                    for priority, kw in ipairs(continueKeywords) do
+                        if (txt == kw or txt:find("^" .. kw) or txt:find(kw .. "$") or name:find(kw)) and priority < bestPriority then
+                            bestButton = obj
+                            bestPriority = priority
+                            break
+                        end
+                    end
+                elseif obj:IsA("TextLabel") and isActuallyVisible(obj) then
+                    local txt = cleanMenuText(obj.Text)
+                    if txt == "TAP TO CONTINUE" or txt == "CLICK TO CONTINUE" or txt == "TOUCH TO CONTINUE" then
+                        local parentBtn = obj.Parent
+                        while parentBtn and parentBtn ~= gui do
+                            if (parentBtn:IsA("TextButton") or parentBtn:IsA("ImageButton") or parentBtn:IsA("Frame")) and isActuallyVisible(parentBtn) then
+                                bestButton = parentBtn
+                                bestPriority = 1
+                                break
+                            end
+                            parentBtn = parentBtn.Parent
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if bestButton then
+        triggerGuiObject(bestButton)
+        task.wait(0.06)
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.02)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        end)
+        return true
+    end
+
+    return false
+end
+
+local function checkAndChoosePath(playerGui)
+    local pathKeywords = {
+        "BATTLE", "REST", "EVENT", "ELITE", "TREASURE", "MYSTERY", "CHEST",
+        "SHOP", "STAGE", "FLOOR", "VOTE", "SELECT", "CHOOSE", "ENTER"
+    }
+
+    local nodeCandidates = {}
+
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled and not isDuckBloxGui(gui) then
+            local gname = gui.Name:lower()
+            local isMapOrRun = gname:find("map") or gname:find("run") or gname:find("node")
+                or gname:find("choice") or gname:find("path") or gname:find("lobby")
+                or gname:find("event") or gname:find("journey")
+
+            for _, obj in ipairs(gui:GetDescendants()) do
+                if (obj:IsA("TextButton") or obj:IsA("ImageButton")) and isActuallyVisible(obj) then
+                    local name = obj.Name:upper()
+                    local txt = obj:IsA("TextButton") and cleanMenuText(obj.Text) or ""
+
+                    local matched = false
+                    for _, kw in ipairs(pathKeywords) do
+                        if txt == kw or txt:find(kw) or name:find(kw) then
+                            matched = true
+                            break
+                        end
+                    end
+
+                    if not matched and isMapOrRun then
+                        if name:find("NODE") or name:find("CHOICE") or name:find("OPTION") or name:find("PATH") or name:find("TIER") or name:find("CARD") then
+                            matched = true
+                        end
+                    end
+
+                    if matched and obj.AbsoluteSize.X >= 24 and obj.AbsoluteSize.Y >= 20 then
+                        table.insert(nodeCandidates, obj)
+                    end
+                end
+            end
+        end
+    end
+
+    if #nodeCandidates > 0 then
+        local chosenNode = nodeCandidates[1]
+        triggerGuiObject(chosenNode)
+        task.wait(0.08)
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.02)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        end)
+        return true
+    end
+
+    return false
+end
+
+local autoPlayThread = task.spawn(function()
+    while isRunning and ScreenGui.Parent do
+        if autoPlayEnabled and not bowCache.active and not dodgeCache.active then
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui and (os.clock() - lastAutoPlayAction) >= 0.4 then
+                local didContinue = false
+                pcall(function()
+                    didContinue = checkAndClickContinue(playerGui)
+                end)
+
+                if didContinue then
+                    lastAutoPlayAction = os.clock()
+                    task.wait(0.5)
+                else
+                    local didPath = false
+                    pcall(function()
+                        didPath = checkAndChoosePath(playerGui)
+                    end)
+                    if didPath then
+                        lastAutoPlayAction = os.clock()
+                        task.wait(0.6)
+                    end
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end)
+table.insert(activeThreads, autoPlayThread)
+
 createSection("⚔️ Combat & Minigame")
 
 createToggle(
@@ -1364,6 +1536,16 @@ createToggle(
             dodgeHasReset = true
             prevNeedleX = nil
         end
+    end
+)
+
+createSection("🗺️ Mode & Progression")
+
+createToggle(
+    "🗺️ Auto Play (Auto Path & Continue)",
+    false,
+    function(state)
+        autoPlayEnabled = state
     end
 )
 
