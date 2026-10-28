@@ -42,6 +42,8 @@ local CONFIG = {
 local currentShot = 0
 local lastTriggerTime = 0
 local lastPositions = {}           -- บันทึกพิกัดเฟรมก่อนหน้าเพื่อหาตัวที่กำลังขยับ
+local hasResetToBottom = true
+local prevBowCenterY = nil
 
 -- ========================================================
 -- 🔔 Notification Helper
@@ -235,18 +237,34 @@ local function checkPowerShotAlignment()
     local bowCenterY = movingObj.AbsolutePosition.Y + (movingObj.AbsoluteSize.Y * 0.5)
     local tol = CONFIG.HitTolerancePixels
 
-    -- ตรวจสอบว่าคันธนูเลื่อนขึ้นมาถึงจุดกึ่งกลางหรือยัง:
-    -- เนื่องจากหลอดเลื่อนขึ้นจากล่างขึ้นบน: ค่า Y จะลดลงเรื่อยๆ
-    -- เมื่อ bowCenterY <= targetY + tol และยังไม่เลยเป้าหมายไปไกล
-    local isAtCenter = math.abs(bowCenterY - targetY) <= tol
-    local justPassedCenter = (bowCenterY <= targetY) and (bowCenterY >= targetY - 12)
+    -- ตรวจสอบว่าคันธนูรีเซ็ตลงไปข้างล่างหรือยัง
+    if bowCenterY > (targetY + 15) then
+        hasResetToBottom = true
+    end
 
-    if isAtCenter or justPassedCenter then
-        lastTriggerTime = os.clock()
-        currentShot = (currentShot % CONFIG.TotalShots) + 1
+    -- ตรวจสอบความเร็วการเลื่อนขึ้น
+    local isMovingUp = false
+    if prevBowCenterY ~= nil then
+        local delta = prevBowCenterY - bowCenterY
+        if delta > 0.2 then
+            isMovingUp = true
+        end
+    end
+    prevBowCenterY = bowCenterY
 
-        triggerPerfectHit(clickPos)
-        notify("🎯 PERFECT!", string.format("ยิงที่กึ่งกลางแถบทองรอบที่ %d/%d สำเร็จ (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
+    -- ยิงเฉพาะเมื่อรีเซ็ตลงล่างแล้ว กำลังเลื่อนขึ้น และถึงกึ่งกลางเป้าหมาย
+    if hasResetToBottom and isMovingUp then
+        local isAtCenter = math.abs(bowCenterY - targetY) <= tol
+        local justPassed = (bowCenterY <= targetY) and (bowCenterY >= targetY - 8)
+
+        if isAtCenter or justPassed then
+            hasResetToBottom = false -- ล็อคทันทีจนกว่าจะเริ่มรอบใหม่
+            lastTriggerTime = os.clock()
+            currentShot = (currentShot % CONFIG.TotalShots) + 1
+
+            triggerPerfectHit(clickPos)
+            notify("🎯 PERFECT!", string.format("ยิงที่กึ่งกลางแถบทองรอบที่ %d/%d สำเร็จ (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
+        end
     end
 end
 

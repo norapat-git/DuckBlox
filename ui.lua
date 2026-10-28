@@ -82,6 +82,7 @@ ToggleBubble.Text = "🏹"
 ToggleBubble.TextSize = 22
 ToggleBubble.TextColor3 = THEME.Text
 ToggleBubble.AutoButtonColor = false
+ToggleBubble.Active = true -- ป้องกันคลิกทะลุเข้าเกม
 ToggleBubble.Parent = ScreenGui
 
 local BubbleCorner = Instance.new("UICorner")
@@ -101,6 +102,7 @@ MainFrame.Position = UDim2.new(0.5, -180, 0.5, -220)
 MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
+MainFrame.Active = true -- ซึมซับการคลิก ไม่ให้ทะลุไปยิงธนูในเกมเวลาลากหน้าต่าง
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -118,6 +120,7 @@ TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, 0, 0, 48)
 TopBar.BackgroundColor3 = THEME.TopBar
 TopBar.BorderSizePixel = 0
+TopBar.Active = true -- ให้ TopBar ดักจับการคลิกเวลาลาก ไม่ส่ง Mouse1 ไปในเกม
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
@@ -180,6 +183,7 @@ ScrollContainer.ScrollBarThickness = 4
 ScrollContainer.ScrollBarImageColor3 = THEME.Border
 ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScrollContainer.Active = true
 ScrollContainer.Parent = MainFrame
 
 local ContentList = Instance.new("UIListLayout")
@@ -415,6 +419,9 @@ local function isGreenColor(color)
     return (color.G > 0.55) and (color.G > color.R) and (color.G > color.B)
 end
 
+local bowHasResetToBottom = true
+local prevBowY = nil
+
 local function scanAndTriggerBow()
     if not autoBowEnabled then return end
     if (os.clock() - lastBowTrigger) < BOW_SETTINGS.Cooldown then return end
@@ -445,7 +452,12 @@ local function scanAndTriggerBow()
         end
     end
 
-    if not activeContainer then return end
+    if not activeContainer then
+        -- เมื่อมินิเกมจบ ให้รีเซ็ตสถานะพร้อมเริ่มรอบใหม่
+        bowHasResetToBottom = true
+        prevBowY = nil
+        return
+    end
 
     local goldBand = nil
     local gaugeFrame = nil
@@ -500,7 +512,7 @@ local function scanAndTriggerBow()
 
     if goldBand then
         local goldCenter = goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y * 0.5)
-        targetY = goldCenter - 2 -- ขยับขึ้นไปหากึ่งกลางเป๊ะ
+        targetY = goldCenter - 2
         clickPos = Vector2.new(
             goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
             goldCenter
@@ -519,14 +531,35 @@ local function scanAndTriggerBow()
     local bowCenterY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y * 0.5)
     local tol = BOW_SETTINGS.Tolerance
 
-    -- กดเมื่อคันธนูเลื่อนมาถึงจุดกึ่งกลางของแถบทอง (แทนที่จะกดตรงขอบล่าง)
-    local isAtCenter = math.abs(bowCenterY - targetY) <= tol
-    local justPassedCenter = (bowCenterY <= targetY) and (bowCenterY >= targetY - 10)
+    -- ตรวจสอบว่าคันธนูรีเซ็ตลงไปข้างล่างหรือยัง (เพื่อไม่ให้กดซ้ำรอบเดิม)
+    if bowCenterY > (targetY + 15) then
+        bowHasResetToBottom = true
+    end
 
-    if isAtCenter or justPassedCenter then
-        lastBowTrigger = os.clock()
-        triggerBowClick(clickPos.X, clickPos.Y)
-        print(string.format("[Auto Bow] 🎯 POWER SHOT - Perfect Center Hit (Y: %.1f / Target: %.1f)", bowCenterY, targetY))
+    -- คำนวณว่ากำลังเคลื่อนที่เลื่อนขึ้นจริงหรือไม่ (ป้องกันการกดตอนลูกศรค้างหรือกำลังรีเซ็ต)
+    local isMovingUp = false
+    if prevBowY ~= nil then
+        local delta = prevBowY - bowCenterY
+        if delta > 0.2 then
+            isMovingUp = true
+        end
+    end
+    prevBowY = bowCenterY
+
+    -- กด Perfect เฉพาะเมื่อ:
+    -- 1. ลูกศรเคยรีเซ็ตลงไปข้างล่างแล้ว (bowHasResetToBottom)
+    -- 2. กำลังเคลื่อนที่ลอยขึ้นจริง (isMovingUp)
+    -- 3. ถึงกึ่งกลางเป้าหมายแถบทองพอดี
+    if bowHasResetToBottom and isMovingUp then
+        local isAtCenter = math.abs(bowCenterY - targetY) <= tol
+        local justPassed = (bowCenterY <= targetY) and (bowCenterY >= targetY - 8)
+
+        if isAtCenter or justPassed then
+            bowHasResetToBottom = false -- ล็อคทันที รอให้รอบถัดไปรีเซ็ตลงล่างก่อน
+            lastBowTrigger = os.clock()
+            triggerBowClick(clickPos.X, clickPos.Y)
+            print(string.format("[Auto Bow] 🎯 POWER SHOT - Perfect Hit (Y: %.1f / Target: %.1f)", bowCenterY, targetY))
+        end
     end
 end
 
