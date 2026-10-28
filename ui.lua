@@ -1,15 +1,3 @@
---[[
-    ========================================================================
-    🦆 DuckBlox - Ultra Smooth Custom UI (No External Library)
-    ========================================================================
-    - ทำงานเร็ว ลื่น 100% Native Roblox (ไม่มีความหน่วง/Lag จาก Rayfield)
-    - ไม่ต้องโหลดไลบรารีภายนอก (No HttpGet / No loadstring overhead)
-    - มีระบบ Auto Bow (Auto Trigger Perfect ในมินิเกมยิงธนู)
-    - ปรับแต่งหน้าตาให้สวยงาม โมเดิร์น พร้อมแอนิเมชัน TweenService ที่ลื่นไหล
-    - รองรับระบบลากหน้าต่าง (Smooth Drag) และปุ่มเปิด/ปิด (Floating Toggle)
-    ========================================================================
---]]
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -19,7 +7,6 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
 
--- 1. ตรวจสอบ Parent สำหรับ GUI (รองรับทั้ง Studio และ Executor)
 local parentGui
 if typeof(gethui) == "function" then
     parentGui = gethui()
@@ -30,49 +17,39 @@ else
     parentGui = (success and coreGui) or LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- ลบ UI ตัวเก่าออกถ้ามีอยู่
 if parentGui:FindFirstChild("DuckBloxCustomUI") then
     parentGui.DuckBloxCustomUI:Destroy()
 end
 
--- ========================================================
--- 🎨 STYLING CONFIG (ชุดสีและรูปแบบสไตล์ Modern Dark)
--- ========================================================
 local THEME = {
     Background = Color3.fromRGB(20, 22, 28),
     TopBar = Color3.fromRGB(27, 30, 39),
     CardBg = Color3.fromRGB(30, 34, 44),
-    Accent = Color3.fromRGB(88, 101, 242),       -- Discord Blurple
-    Success = Color3.fromRGB(46, 204, 113),     -- Emerald Green
-    Warning = Color3.fromRGB(241, 196, 15),     -- Gold
-    Danger = Color3.fromRGB(231, 76, 60),       -- Red
+    Accent = Color3.fromRGB(88, 101, 242),
+    Success = Color3.fromRGB(46, 204, 113),
+    Danger = Color3.fromRGB(231, 76, 60),
     Text = Color3.fromRGB(245, 245, 250),
     TextMuted = Color3.fromRGB(150, 155, 175),
     Border = Color3.fromRGB(45, 50, 65),
 }
 
--- ========================================================
--- 📦 GUI INSTANCES
--- ========================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DuckBloxCustomUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.DisplayOrder = 999999 -- อยู่บนสุดเหนือ UI และ Custom Cursor ของเกมเสมอ
+ScreenGui.DisplayOrder = 999999
 ScreenGui.Parent = parentGui
 
--- 🖱️ Virtual Hardware Cursor (เคอร์เซอร์สำรอง รับประกันว่าเมาส์จะมองเห็นได้ 100%)
 local VirtualCursor = Instance.new("ImageLabel")
 VirtualCursor.Name = "DuckBloxVirtualCursor"
 VirtualCursor.Size = UDim2.new(0, 24, 0, 24)
 VirtualCursor.BackgroundTransparency = 1
 VirtualCursor.Image = "rbxasset://textures/ArrowCursor.png"
 VirtualCursor.ZIndex = 999999
-VirtualCursor.Active = false -- ป้องกันไม่ให้บังการคลิกปุ่ม
+VirtualCursor.Active = false
 VirtualCursor.Visible = false
 VirtualCursor.Parent = ScreenGui
 
--- 🔘 Floating Toggle Button (ปุ่มกลมลอยบนจอสำหรับซ่อน/แสดง)
 local ToggleBubble = Instance.new("TextButton")
 ToggleBubble.Name = "ToggleBubble"
 ToggleBubble.Size = UDim2.new(0, 52, 0, 52)
@@ -82,7 +59,7 @@ ToggleBubble.Text = "🏹"
 ToggleBubble.TextSize = 22
 ToggleBubble.TextColor3 = THEME.Text
 ToggleBubble.AutoButtonColor = false
-ToggleBubble.Active = true -- ป้องกันคลิกทะลุเข้าเกม
+ToggleBubble.Active = true
 ToggleBubble.Parent = ScreenGui
 
 local BubbleCorner = Instance.new("UICorner")
@@ -94,7 +71,6 @@ BubbleStroke.Color = THEME.Accent
 BubbleStroke.Thickness = 2
 BubbleStroke.Parent = ToggleBubble
 
--- 🖥️ Main Window Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 340, 0, 260)
@@ -102,7 +78,7 @@ MainFrame.Position = UDim2.new(0.5, -170, 0.5, -130)
 MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
-MainFrame.Active = true -- ซึมซับการคลิก ไม่ให้ทะลุไปยิงธนูในเกมเวลาลากหน้าต่าง
+MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -114,20 +90,18 @@ MainStroke.Color = THEME.Border
 MainStroke.Thickness = 1.5
 MainStroke.Parent = MainFrame
 
--- TopBar (แถบด้านบนสำหรับลากหน้าต่าง)
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, 0, 0, 48)
 TopBar.BackgroundColor3 = THEME.TopBar
 TopBar.BorderSizePixel = 0
-TopBar.Active = true -- ให้ TopBar ดักจับการคลิกเวลาลาก ไม่ส่ง Mouse1 ไปในเกม
+TopBar.Active = true
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
 TopBarCorner.CornerRadius = UDim.new(0, 14)
 TopBarCorner.Parent = TopBar
 
--- Fix TopBar Corner ให้มุมล่างเรียบ
 local TopBarBottomMask = Instance.new("Frame")
 TopBarBottomMask.Size = UDim2.new(1, 0, 0, 10)
 TopBarBottomMask.Position = UDim2.new(0, 0, 1, -10)
@@ -148,7 +122,6 @@ TitleLabel.TextSize = 15
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
--- ปุ่มปิด (Close Button)
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Name = "CloseBtn"
 CloseBtn.Size = UDim2.new(0, 28, 0, 28)
@@ -168,11 +141,11 @@ CloseCorner.Parent = CloseBtn
 CloseBtn.MouseEnter:Connect(function()
     TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.Danger, TextColor3 = Color3.new(1, 1, 1)}):Play()
 end)
+
 CloseBtn.MouseLeave:Connect(function()
     TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(38, 42, 54), TextColor3 = THEME.TextMuted}):Play()
 end)
 
--- Scroll Container
 local ScrollContainer = Instance.new("ScrollingFrame")
 ScrollContainer.Name = "ScrollContainer"
 ScrollContainer.Size = UDim2.new(1, -20, 1, -60)
@@ -198,11 +171,6 @@ ContentPadding.PaddingLeft = UDim.new(0, 4)
 ContentPadding.PaddingRight = UDim.new(0, 4)
 ContentPadding.Parent = ScrollContainer
 
--- ========================================================
--- 🧩 UI BUILDER HELPERS (ฟังก์ชันช่วยสร้าง Element)
--- ========================================================
-
--- Section Title
 local function createSection(titleText)
     local section = Instance.new("TextLabel")
     section.Size = UDim2.new(1, 0, 0, 24)
@@ -216,62 +184,6 @@ local function createSection(titleText)
     return section
 end
 
--- Interactive Button
-local function createButton(text, icon, bgColor, onClick)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 42)
-    button.BackgroundColor3 = bgColor or THEME.CardBg
-    button.Text = (icon and icon .. "  " or "") .. text
-    button.TextColor3 = THEME.Text
-    button.Font = Enum.Font.GothamSemibold
-    button.TextSize = 13.5
-    button.AutoButtonColor = false
-    button.Parent = ScrollContainer
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = button
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = THEME.Border
-    stroke.Thickness = 1
-    stroke.Parent = button
-
-    -- Smooth Hover & Click Tween
-    local originalBg = button.BackgroundColor3
-    local hoverBg = Color3.fromRGB(
-        math.min(255, originalBg.R * 255 + 22),
-        math.min(255, originalBg.G * 255 + 22),
-        math.min(255, originalBg.B * 255 + 22)
-    )
-
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundColor3 = hoverBg
-        }):Play()
-    end)
-
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundColor3 = originalBg
-        }):Play()
-    end)
-
-    button.MouseButton1Click:Connect(function()
-        local pressTween = TweenService:Create(button, TweenInfo.new(0.08), {Size = UDim2.new(0.98, 0, 0, 40)})
-        pressTween:Play()
-        pressTween.Completed:Wait()
-        TweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 42)}):Play()
-
-        if onClick then
-            pcall(onClick)
-        end
-    end)
-
-    return button
-end
-
--- Toggle Switch Component (สวิตช์แบบเคลื่อนไหวลื่นไหล คลีนไร้คำอธิบาย)
 local function createToggle(title, defaultState, onToggle)
     local isEnabled = defaultState or false
 
@@ -301,7 +213,6 @@ local function createToggle(title, defaultState, onToggle)
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
     titleLbl.Parent = card
 
-    -- Switch Capsule
     local switch = Instance.new("TextButton")
     switch.Size = UDim2.new(0, 46, 0, 26)
     switch.Position = UDim2.new(1, -58, 0.5, -13)
@@ -341,9 +252,7 @@ local function createToggle(title, defaultState, onToggle)
             cardStroke.Color = targetStroke
         end
 
-        if onToggle then
-            onToggle(isEnabled)
-        end
+        if onToggle then onToggle(isEnabled) end
     end
 
     switch.MouseButton1Click:Connect(function()
@@ -356,23 +265,18 @@ local function createToggle(title, defaultState, onToggle)
     }
 end
 
--- ========================================================
--- 🏹 AUTO BOW LOGIC (ระบบตรวจจับและยิง Perfect อัตโนมัติ)
--- ========================================================
 local autoBowEnabled = false
 local lastBowTrigger = 0
 local bowConnection = nil
+local bowHasResetToBottom = true
+local prevBowY = nil
 
 local BOW_SETTINGS = {
     Cooldown = 0.45,
     Tolerance = 5,
-    GuiNames = {"BowMinigame", "BowGui", "Minigame", "QTE", "TimingBar", "AimMinigame", "ArrowMinigame"},
-    TargetNames = {"Perfect", "PerfectZone", "SweetSpot", "GreenZone", "TargetZone", "Target", "Goal"},
-    IndicatorNames = {"Pointer", "Needle", "Indicator", "Cursor", "Bar", "Line", "Slider"},
 }
 
 local function triggerBowClick(x, y)
-    -- 1. Virtual Mouse Click
     pcall(function()
         local clickX = x or (workspace.CurrentCamera.ViewportSize.X / 2)
         local clickY = y or (workspace.CurrentCamera.ViewportSize.Y / 2)
@@ -381,20 +285,16 @@ local function triggerBowClick(x, y)
         VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
     end)
 
-    -- 2. Spacebar Keypress
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
         task.wait(0.015)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
     end)
 
-    -- 3. Tool Activate (ถ้าถือคันธนูอยู่)
     pcall(function()
         local char = LocalPlayer.Character
-        if char then
-            local tool = char:FindFirstChildOfClass("Tool")
-            if tool then tool:Activate() end
-        end
+        local tool = char and char:FindFirstChildOfClass("Tool")
+        if tool then tool:Activate() end
     end)
 end
 
@@ -408,9 +308,6 @@ local function isGreenColor(color)
     return (color.G > 0.55) and (color.G > color.R) and (color.G > color.B)
 end
 
-local bowHasResetToBottom = true
-local prevBowY = nil
-
 local function scanAndTriggerBow()
     if not autoBowEnabled then return end
     if (os.clock() - lastBowTrigger) < BOW_SETTINGS.Cooldown then return end
@@ -418,7 +315,6 @@ local function scanAndTriggerBow()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return end
 
-    -- ค้นหา Minigame Container (ตรวจหาทั้ง POWER SHOT และชื่อทั่วไป)
     local activeContainer = nil
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
@@ -432,7 +328,7 @@ local function scanAndTriggerBow()
                 end
             end
             if activeContainer then break end
-            
+
             local lname = gui.Name:lower()
             if lname:find("bow") or lname:find("minigame") or lname:find("qte") or lname:find("timing") then
                 activeContainer = gui
@@ -442,7 +338,6 @@ local function scanAndTriggerBow()
     end
 
     if not activeContainer then
-        -- เมื่อมินิเกมจบ ให้รีเซ็ตสถานะพร้อมเริ่มรอบใหม่
         bowHasResetToBottom = true
         prevBowY = nil
         return
@@ -469,7 +364,6 @@ local function scanAndTriggerBow()
         end
     end
 
-    -- ค้นหาคันธนู (Bow) หรือตัวที่กำลังเลื่อน
     local indicator = nil
     for _, obj in ipairs(activeContainer:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible then
@@ -495,7 +389,6 @@ local function scanAndTriggerBow()
 
     if not indicator then return end
 
-    -- คำนวณจุดเป้าหมาย: กึ่งกลางของ Gold Band
     local targetY = nil
     local clickPos = nil
 
@@ -520,55 +413,45 @@ local function scanAndTriggerBow()
     local bowCenterY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y * 0.5)
     local tol = BOW_SETTINGS.Tolerance
 
-    -- ตรวจสอบว่าคันธนูรีเซ็ตลงไปข้างล่างหรือยัง (เพื่อไม่ให้กดซ้ำรอบเดิม)
     if bowCenterY > (targetY + 15) then
         bowHasResetToBottom = true
     end
 
-    -- คำนวณว่ากำลังเคลื่อนที่เลื่อนขึ้นจริงหรือไม่
     local isMovingUp = false
     if prevBowY ~= nil then
         local delta = prevBowY - bowCenterY
-        if delta > 0.1 then -- ไวขึ้น ป้องกันเฟรมดรอป
+        if delta > 0.1 then
             isMovingUp = true
         end
     end
 
-    -- ป้องกันปัญหา Lag: ตรวจจับทั้งการอยู่กึ่งกลาง และการที่ข้ามเป้าหมายในเฟรมเดียว
     local isAtCenter = math.abs(bowCenterY - targetY) <= (tol + 2)
     local justPassed = (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 35)
     local crossedDuringLag = (prevBowY ~= nil) and (prevBowY >= targetY - 4) and (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 45)
 
     if bowHasResetToBottom and isMovingUp and (isAtCenter or justPassed or crossedDuringLag) then
-        bowHasResetToBottom = false -- ล็อคทันที รอให้รอบถัดไปรีเซ็ตลงล่างก่อน
+        bowHasResetToBottom = false
         lastBowTrigger = os.clock()
         triggerBowClick(clickPos.X, clickPos.Y)
-        print(string.format("[Auto Bow] 🎯 POWER SHOT - Perfect Hit (Y: %.1f / Target: %.1f)", bowCenterY, targetY))
     end
 
     prevBowY = bowCenterY
 end
 
--- สตาร์ท RenderStepped Loop สำหรับ Auto Bow
 local function setAutoBowState(enabled)
     autoBowEnabled = enabled
     if enabled then
         if not bowConnection then
             bowConnection = RunService.RenderStepped:Connect(scanAndTriggerBow)
         end
-        print("[DuckBlox UI] Auto Bow: ON (ตรวจจับระดับ Frame-Perfect)")
     else
         if bowConnection then
             bowConnection:Disconnect()
             bowConnection = nil
         end
-        print("[DuckBlox UI] Auto Bow: OFF")
     end
 end
 
--- ========================================================
--- 🛡️ AUTO DODGE LOGIC (กด Perfect Dodge ตรงแถบสีขาวอัตโนมัติ)
--- ========================================================
 local autoDodgeEnabled = false
 local lastDodgeTrigger = 0
 local dodgeConnection = nil
@@ -586,7 +469,6 @@ local function isWhiteColor(c)
     return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
 end
 
--- ค้นหา ScreenGui หรือ Container หลักของ Incoming! / Dodge
 local function findDodgeContainer()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
@@ -597,7 +479,7 @@ local function findDodgeContainer()
                 if label:IsA("TextLabel") and label.Visible then
                     local text = label.Text:upper()
                     if text:find("INCOMING") or text:find("DODGE") or text:find("YOUR SHIELD") then
-                        return gui -- คืนค่าทั้ง ScreenGui เพื่อให้หาชิ้นส่วนในหน้าต่างเจอครบแน่นอน 100%
+                        return gui
                     end
                 end
             end
@@ -606,7 +488,6 @@ local function findDodgeContainer()
     return nil
 end
 
--- ค้นหาเข็มสีแดงที่กำลังขยับแนวนอนจริง (Horizontal Motion Tracking)
 local function getMovingNeedle(container)
     local bestObj = nil
     local maxMoveX = 0
@@ -626,7 +507,6 @@ local function getMovingNeedle(container)
         end
     end
 
-    -- Fallback ถ้ายังไม่เริ่มขยับ ให้หาตามชื่อเข็ม
     if not bestObj then
         for _, obj in ipairs(container:GetDescendants()) do
             if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 10 and obj.AbsoluteSize.X < 25 then
@@ -641,15 +521,12 @@ local function getMovingNeedle(container)
     return bestObj
 end
 
--- ค้นหาแถบสีขาวจริง (White Zone) ในระดับความสูงเดียวกับเข็ม (กรอง TextLabel ทิ้ง)
 local function findWhiteDodgeZone(container, needle)
     local needleY = needle.AbsolutePosition.Y
 
     for _, obj in ipairs(container:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible and obj ~= needle then
-            -- ต้องเป็นวัตถุที่มีสีทึบ (BackgroundTransparency < 0.6) ป้องกันการจับโดน TextLabel โปร่งใส
             if obj.AbsoluteSize.X > 5 and obj.BackgroundTransparency < 0.6 then
-                -- ต้องอยู่ในระดับความสูงเดียวกับเข็ม (ห่างกันไม่เกิน 40 พิกเซล)
                 if math.abs(obj.AbsolutePosition.Y - needleY) < 40 then
                     local name = obj.Name:lower()
                     if name:find("white") or name:find("dodge") or name:find("sweet") or name:find("target") then
@@ -684,42 +561,35 @@ local function scanAndTriggerDodge()
     local whiteZone = findWhiteDodgeZone(container, needle)
     if not whiteZone then return end
 
-    -- พิกัดแนวนอน (X-Axis) ของ White Zone
     local whiteLeft = whiteZone.AbsolutePosition.X
     local whiteRight = whiteLeft + whiteZone.AbsoluteSize.X
     local whiteCenterX = whiteLeft + (whiteZone.AbsoluteSize.X * 0.5)
 
-    -- พิกัด X ของเข็มสีแดง
     local needleX = needle.AbsolutePosition.X + (needle.AbsoluteSize.X * 0.5)
     local tol = DODGE_SETTINGS.Tolerance
 
-    -- ตรวจสอบว่าเข็มอยู่นอกโซนสีขาวหรือไม่ (เพื่อรีเซ็ตเตรียมกดรอบใหม่)
     if needleX < (whiteLeft - 15) or needleX > (whiteRight + 15) then
         dodgeHasReset = true
     end
 
-    -- คำนวณทิศทางการเคลื่อนที่ของเข็ม
-    local movingDir = 0 -- 1 = ขวา, -1 = ซ้าย
+    local movingDir = 0
     if prevNeedleX ~= nil then
         local delta = needleX - prevNeedleX
         if delta > 0.15 then
-            movingDir = 1 -- เลื่อนจากซ้ายไปขวา
+            movingDir = 1
         elseif delta < -0.15 then
-            movingDir = -1 -- เลื่อนจากขวาไปซ้าย
+            movingDir = -1
         end
     end
 
-    -- ตรวจจับว่าเข็มเข้าสู่ White Zone หรือข้ามจุดกึ่งกลาง (รองรับแม้เกิด Lag)
     local isAtCenter = math.abs(needleX - whiteCenterX) <= tol
     local crossedCenter = false
     if prevNeedleX ~= nil and movingDir ~= 0 then
         if movingDir == 1 then
-            -- เลื่อนจากซ้ายไปขวา: ข้าม whiteCenterX
             if (prevNeedleX <= whiteCenterX + 5) and (needleX >= whiteCenterX - tol) and (needleX <= whiteRight + 25) then
                 crossedCenter = true
             end
         elseif movingDir == -1 then
-            -- เลื่อนจากขวาไปซ้าย: ข้าม whiteCenterX
             if (prevNeedleX >= whiteCenterX - 5) and (needleX <= whiteCenterX + tol) and (needleX >= whiteLeft - 25) then
                 crossedCenter = true
             end
@@ -730,7 +600,6 @@ local function scanAndTriggerDodge()
         dodgeHasReset = false
         lastDodgeTrigger = os.clock()
         triggerBowClick(whiteCenterX, whiteZone.AbsolutePosition.Y + (whiteZone.AbsoluteSize.Y * 0.5))
-        print(string.format("[Auto Dodge] 🛡️ PERFECT DODGE TRIGGERED! (Needle X: %.1f / WhiteCenter: %.1f)", needleX, whiteCenterX))
     end
 
     prevNeedleX = needleX
@@ -742,55 +611,40 @@ local function setAutoDodgeState(enabled)
         if not dodgeConnection then
             dodgeConnection = RunService.RenderStepped:Connect(scanAndTriggerDodge)
         end
-        print("[DuckBlox UI] Auto Dodge: ON")
     else
         if dodgeConnection then
             dodgeConnection:Disconnect()
             dodgeConnection = nil
         end
-        print("[DuckBlox UI] Auto Dodge: OFF")
     end
 end
 
--- ========================================================
--- ⚔️ AUTO COMBAT SYSTEM (ระบบต่อสู้อัตโนมัติ: โจมตี & ใช้สกิลจนจบ Combat)
--- ========================================================
 local autoCombatEnabled = false
 local autoCombatThread = nil
 
 local COMBAT_CONFIG = {
-    ActionDelay = 0.45,            -- หน่วงเวลาระหว่างรอบการกดแอ็กชัน (วินาที)
-    PrioritizeSkills = true,       -- ลำดับความสำคัญ: ใช้ Skill ก่อน ถ้าติด CD ค่อยใช้ Attack
-    
-    -- คำค้นหา GUI การต่อสู้ (Combat GUI)
+    ActionDelay = 0.45,
+    PrioritizeSkills = true,
     CombatGuiKeywords = {"Combat", "Battle", "Fight", "Turn", "Match", "Action", "Dungeon", "Duel"},
-    
-    -- รายชื่อปุ่มโจมตีปกติ (Attack Buttons)
     AttackNames = {
         "Attack", "AttackBtn", "BasicAttack", "NormalAttack", "Strike", 
         "Hit", "Slash", "Punch", "Shoot", "Fire", "ActionButton", "Primary"
     },
-    
-    -- รายชื่อปุ่มสกิล (Skill Buttons)
     SkillNames = {
         "Skill", "Skill1", "Skill2", "Skill3", "Skill4", "SkillBtn", 
         "Ability", "Ability1", "Ability2", "Ability3", 
         "Spell", "Magic", "Special", "Burst", "Ultimate"
     },
-    
-    -- คำค้นหาปุ่มยืนยันเป้าหมายหรือเลือกศัตรู
     TargetNames = {"Target", "Select", "Confirm", "Enemy", "Opponent", "LockOn"},
 }
 
--- จำลองการคลิกที่ปุ่ม GuiObject บนหน้าจอ
 local function clickGuiButton(button)
     if not button or not button:IsA("GuiObject") then return false end
-    
     local pos = button.AbsolutePosition
     local size = button.AbsoluteSize
     local centerX = pos.X + (size.X / 2)
     local centerY = pos.Y + (size.Y / 2)
-    
+
     pcall(function()
         VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
         task.wait(0.015)
@@ -799,19 +653,16 @@ local function clickGuiButton(button)
     return true
 end
 
--- ตรวจสอบว่าสกิลพร้อมใช้งานหรือไม่ (ไม่ติดคูลดาวน์)
 local function isSkillReady(button)
     if not button.Visible then return false end
-    
-    -- ตรวจสอบตัวหนังสือบนปุ่ม (กรณีระบุเวลา Cooldown เป็นวินาที เช่น "4.5", "2s")
+
     if button:IsA("TextButton") then
         local txt = button.Text:gsub("%s+", "")
         if tonumber(txt) or txt:match("^%d+%.?%d*s?$") then
             return false
         end
     end
-    
-    -- ตรวจสอบเลเยอร์ Cooldown Overlay หรือ Progress Bar
+
     for _, child in ipairs(button:GetDescendants()) do
         if child:IsA("GuiObject") and child.Visible then
             local cname = child.Name:lower()
@@ -826,15 +677,14 @@ local function isSkillReady(button)
             end
         end
     end
-    
+
     return true
 end
 
--- ค้นหาหน้าจอการต่อสู้ (Combat GUI) ที่กำลังเปิดอยู่
 local function getActiveCombatGui()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
-    
+
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
             local lname = gui.Name:lower()
@@ -845,8 +695,7 @@ local function getActiveCombatGui()
             end
         end
     end
-    
-    -- หากไม่พบตามชื่อ GUI ให้สแกนหา GUI ใดๆ ที่มีปุ่ม Attack ปรากฏบนจอ
+
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
             for _, attName in ipairs(COMBAT_CONFIG.AttackNames) do
@@ -857,59 +706,49 @@ local function getActiveCombatGui()
             end
         end
     end
-    
+
     return nil
 end
 
--- ฟังก์ชันหลัก auto combat: เลือก Attack หรือ Skill จนจบ Combat
 local function autoCombat()
-    print("⚔️ [DuckBlox UI] เริ่มต้นทำงาน auto combat...")
-    
     while autoCombatEnabled do
         local combatGui = getActiveCombatGui()
-        
+
         if combatGui then
             local actionDone = false
-            
-            -- ขั้นที่ 1: ตรวจหา Skill และกดใช้งานถ้าพร้อม (ไม่ติด CD)
+
             if COMBAT_CONFIG.PrioritizeSkills then
                 for _, sName in ipairs(COMBAT_CONFIG.SkillNames) do
                     local skillBtn = combatGui:FindFirstChild(sName, true)
                     if skillBtn and skillBtn:IsA("GuiObject") and isSkillReady(skillBtn) then
                         clickGuiButton(skillBtn)
                         actionDone = true
-                        print(("[Auto Combat] ⚡ ใช้สกิล: %s"):format(skillBtn.Name))
                         task.wait(0.2)
                         break
                     end
                 end
             end
-            
-            -- ขั้นที่ 2: ถ้าไม่มีสกิลพร้อม ให้เลือกกด Attack ปกติ
+
             if not actionDone then
                 for _, aName in ipairs(COMBAT_CONFIG.AttackNames) do
                     local atkBtn = combatGui:FindFirstChild(aName, true)
                     if atkBtn and atkBtn:IsA("GuiObject") and atkBtn.Visible then
                         clickGuiButton(atkBtn)
                         actionDone = true
-                        print(("[Auto Combat] 🗡️ โจมตีปกติ (Attack): %s"):format(atkBtn.Name))
                         break
                     end
                 end
             end
-            
-            -- ขั้นที่ 3: ยืนยันเป้าหมายอัตโนมัติ (Target / Confirm) ถ้ามีหน้าต่างขึ้นมา
+
             task.wait(0.12)
             for _, tName in ipairs(COMBAT_CONFIG.TargetNames) do
                 local targetBtn = combatGui:FindFirstChild(tName, true)
                 if targetBtn and targetBtn:IsA("GuiObject") and targetBtn.Visible then
                     clickGuiButton(targetBtn)
-                    print("[Auto Combat] 🎯 เลือกเป้าหมายอัตโนมัติ")
                     break
                 end
             end
-            
-            -- ขั้นที่ 4: กรณี Action RPG ทั่วไปที่ใช้ Tool หรือปุ่ม Space/LMB
+
             if not actionDone then
                 local char = LocalPlayer.Character
                 local tool = char and char:FindFirstChildOfClass("Tool")
@@ -917,42 +756,39 @@ local function autoCombat()
                     tool:Activate()
                 end
             end
-            
+
             task.wait(COMBAT_CONFIG.ActionDelay)
         else
-            -- อยู่นอกสถานะต่อสู้ รอจนกว่าจะเริ่ม Combat รอบใหม่
             task.wait(0.5)
         end
     end
 end
 
--- ฟังก์ชันสำหรับเปิด/ปิด auto combat
 local function setAutoCombatState(enabled)
     autoCombatEnabled = enabled
     if enabled then
-        -- เปิดระบบ Auto Bow อัตโนมัติเพื่อรองรับกรณีมี QTE Timing ระหว่างต่อสู้
         if not autoBowEnabled then
             setAutoBowState(true)
             if bowToggle and bowToggle.Set then
                 bowToggle.Set(true)
             end
         end
-        
+        if not autoDodgeEnabled then
+            setAutoDodgeState(true)
+            if dodgeToggle and dodgeToggle.Set then
+                dodgeToggle.Set(true)
+            end
+        end
+
         autoCombatThread = task.spawn(autoCombat)
-        print("⚔️ [DuckBlox UI] Auto Combat: ON")
     else
         autoCombatEnabled = false
         if autoCombatThread then
             task.cancel(autoCombatThread)
             autoCombatThread = nil
         end
-        print("⚔️ [DuckBlox UI] Auto Combat: OFF")
     end
 end
-
--- ========================================================
--- 🎛️ POPULATE UI CONTENT (สร้างองค์ประกอบในหน้าจอ)
--- ========================================================
 
 createSection("⚔️ Combat & Minigame")
 
@@ -980,9 +816,6 @@ local dodgeToggle = createToggle(
     end
 )
 
--- ========================================================
--- 🖱️ SMOOTH DRAGGING & CONTROLS (ระบบลากและเปิด/ปิดหน้าต่าง)
--- ========================================================
 local function enableSmoothDrag(frame, dragHandle)
     local dragging = false
     local dragInput, dragStart, startPos
@@ -1023,7 +856,6 @@ end
 enableSmoothDrag(MainFrame, TopBar)
 enableSmoothDrag(ToggleBubble, ToggleBubble)
 
--- Toggle UI Visibility with Smooth Scale/Fade Animation
 local isWindowVisible = true
 local function toggleUI()
     isWindowVisible = not isWindowVisible
@@ -1048,7 +880,6 @@ end
 CloseBtn.MouseButton1Click:Connect(toggleUI)
 ToggleBubble.MouseButton1Click:Connect(toggleUI)
 
--- ปุ่มลัดบนคีย์บอร์ด (RightControl หรือ V สำหรับเปิด/ปิด UI)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.V then
@@ -1056,18 +887,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- 🖱️ จัดการแสดงผล Cursor ตลอดเวลาที่เปิด UI (แก้ปัญหาเกมซ่อนเมาส์/ล็อคเมาส์)
 RunService.RenderStepped:Connect(function()
     if isWindowVisible then
-        -- 1. ปลดล็อคเมาส์จากการล็อคกลางจอ (Camera LockCenter)
         if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
             UserInputService.MouseBehavior = Enum.MouseBehavior.Default
         end
 
-        -- 2. สั่งเปิด MouseIcon ของระบบ
         UserInputService.MouseIconEnabled = true
 
-        -- 3. อัปเดตตำแหน่ง Virtual Cursor สำรองให้ชี้ตรงหัวเมาส์แบบเรียลไทม์
         local mousePos = UserInputService:GetMouseLocation()
         VirtualCursor.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
         VirtualCursor.Visible = true
@@ -1075,5 +902,3 @@ RunService.RenderStepped:Connect(function()
         VirtualCursor.Visible = false
     end
 end)
-
-print("🦆 [DuckBlox UI] Ultra Smooth Custom UI โหลดสำเร็จแล้ว!")

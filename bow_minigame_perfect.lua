@@ -1,15 +1,3 @@
---[[
-    ========================================================================
-    🏹 Auto Perfect "POWER SHOT" Bow Minigame - LocalScript
-    ========================================================================
-    ปรับปรุงระบบคำนวณตำแหน่งจังหวะ Perfect:
-    - แก้ไขปัญหากดเร็วเกินไป (Early): เดิมทีกดทันทีที่แตะขอบล่างของแถบ
-    - ปรับมาเล็งที่ "กึ่งกลางของแถบสีทอง (Center of Gold Band)" หรือ "กลางหลอด" พอดีเป๊ะ
-    - มีระบบ Motion Tracker ตรวจจับเฉพาะวัตถุที่กำลังขยับเลื่อนขึ้นจริงแบบ Real-time
-    - ปรับชดเชยค่า Offset ได้ (TargetOffset) เพื่อความแม่นยำสูงสุด
-    ========================================================================
---]]
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -19,35 +7,27 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- ========================================================
--- ⚙️ CONFIGURATION (การตั้งค่า)
--- ========================================================
 local CONFIG = {
-    Enabled = true,                -- เปิด/ปิดการทำงานเริ่มต้น
-    ToggleKey = Enum.KeyCode.V,    -- ปุ่มลัด Toggle (กด V บนคีย์บอร์ด)
-    
-    TotalShots = 4,                -- มินิเกมนี้มีทั้งหมด 4 รอบ
-    HitTolerancePixels = 4,        -- ขอบเขตความคลาดเคลื่อน (พิกเซล)
-    ClickCooldown = 0.5,           -- คูลดาวน์ระหว่างรอบยิง (วินาที)
-    
-    -- การปรับตำแหน่งเล็ง:
-    -- 0 = กึ่งกลางแถบสีทอง (Gold Band Center) พอดีเป๊ะ
-    -- ติดลบ (-) = ให้เลื่อนขึ้นไปสูงขึ้นอีกนิดก่อนกด (หน่วงเวลากดช้าลง)
-    -- เป็นบวก (+) = ให้กดเร็วขึ้นอีกนิด
+    Enabled = true,
+    ToggleKey = Enum.KeyCode.V,
+    TotalShots = 4,
+    HitTolerancePixels = 4,
+    ClickCooldown = 0.5,
     TargetOffsetY = -2,
-    
     Notification = true,
 }
 
 local currentShot = 0
 local lastTriggerTime = 0
-local lastPositions = {}           -- บันทึกพิกัดเฟรมก่อนหน้าเพื่อหาตัวที่กำลังขยับ
+local lastPositions = {}
 local hasResetToBottom = true
 local prevBowCenterY = nil
 
--- ========================================================
--- 🔔 Notification Helper
--- ========================================================
+local lastDodgeTrigger = 0
+local lastNeedlePositionsX = {}
+local prevNeedleX = nil
+local dodgeHasReset = true
+
 local function notify(title, text)
     if not CONFIG.Notification then return end
     pcall(function()
@@ -60,18 +40,13 @@ local function notify(title, text)
     print(string.format("[%s] %s", title, text))
 end
 
--- ========================================================
--- 🎯 Trigger Action (กด Spacebar และคลิกเมาส์ซ้ายพร้อมกัน)
--- ========================================================
 local function triggerPerfectHit(clickPosition)
-    -- 1. จำลองการกด SPACEBAR
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
         task.wait(0.02)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
     end)
 
-    -- 2. จำลองการคลิกเมาส์ซ้าย (Mouse 1)
     pcall(function()
         local pos = clickPosition or Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 0)
@@ -79,7 +54,6 @@ local function triggerPerfectHit(clickPosition)
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
     end)
 
-    -- 3. หากมี RemoteEvent มินิเกมใน ReplicatedStorage
     pcall(function()
         local remote = ReplicatedStorage:FindFirstChild("MinigameAction")
             or ReplicatedStorage:FindFirstChild("BowMinigame")
@@ -90,17 +64,16 @@ local function triggerPerfectHit(clickPosition)
     end)
 end
 
--- ========================================================
--- 🔍 Scanner & Target Calculation
--- ========================================================
-
--- ตรวจสอบสีโทนทอง/เหลืองของ Gold Band
 local function isGoldColor(color)
     if not color then return false end
     return (color.R > 0.65) and (color.G > 0.55) and (color.B < 0.6) and (color.R >= color.B + 0.15)
 end
 
--- ค้นหา Container หลักของ Power Shot
+local function isWhiteColor(c)
+    if not c then return false end
+    return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
+end
+
 local function findPowerShotContainer()
     for _, gui in ipairs(PlayerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
@@ -118,7 +91,6 @@ local function findPowerShotContainer()
     return nil
 end
 
--- ค้นหาแถบสีทอง (Gold Band) และหลอดพลังงาน
 local function findGoldBandAndGauge(container)
     local goldBand = nil
     local gaugeFrame = nil
@@ -126,7 +98,6 @@ local function findGoldBandAndGauge(container)
     for _, obj in ipairs(container:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible then
             local name = obj.Name:lower()
-            -- ค้นหา Gold Band
             if not goldBand then
                 if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
                     goldBand = obj
@@ -135,7 +106,6 @@ local function findGoldBandAndGauge(container)
                 end
             end
 
-            -- ค้นหาตัวหลอด Gauge หลัก
             if not gaugeFrame then
                 if name:find("gauge") or name:find("bar") or name:find("meter") or name:find("power") then
                     if obj.AbsoluteSize.Y > 50 then
@@ -149,7 +119,6 @@ local function findGoldBandAndGauge(container)
     return goldBand, gaugeFrame
 end
 
--- ค้นหาวัตถุที่กำลังขยับเลื่อนขึ้น (Motion Tracking)
 local function getMovingObject(container)
     local movingObj = nil
     local maxMove = 0
@@ -157,12 +126,11 @@ local function getMovingObject(container)
     for _, obj in ipairs(container:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 0 then
             local name = obj.Name:lower()
-            -- กรองเอาเฉพาะตัวที่น่าจะเป็นคันธนู, ลูกศร หรือหลอดพลังงาน
             if name:find("bow") or name:find("arrow") or name:find("pointer") or name:find("needle") or name:find("fill") or name:find("bar") then
                 local prevY = lastPositions[obj]
                 local curY = obj.AbsolutePosition.Y
                 if prevY ~= nil then
-                    local delta = prevY - curY -- เลื่อนขึ้น = delta เป็นบวก
+                    local delta = prevY - curY
                     if delta > 0.15 and delta > maxMove then
                         maxMove = delta
                         movingObj = obj
@@ -173,7 +141,6 @@ local function getMovingObject(container)
         end
     end
 
-    -- Fallback: หากยังไม่พบการขยับ ให้หาตามชื่อคันธนู
     if not movingObj then
         for _, obj in ipairs(container:GetDescendants()) do
             if obj:IsA("GuiObject") and obj.Visible then
@@ -188,9 +155,6 @@ local function getMovingObject(container)
     return movingObj
 end
 
--- ========================================================
--- ⚡ Real-Time Center Alignment (RenderStepped)
--- ========================================================
 local function checkPowerShotAlignment()
     if not CONFIG.Enabled then return end
     if (os.clock() - lastTriggerTime) < CONFIG.ClickCooldown then return end
@@ -209,9 +173,6 @@ local function checkPowerShotAlignment()
 
     if not movingObj then return end
 
-    -- คำนวณพิกัดเป้าหมาย (Target Y):
-    -- ลำดับที่ 1: เล็งที่ "กึ่งกลางของแถบสีทอง" (Center of Gold Band)
-    -- ลำดับที่ 2: หากหาแถบทองไม่เจอ ให้เล็งที่กึ่งกลางหลอด Gauge (Center of Gauge)
     local targetY = nil
     local clickPos = nil
 
@@ -233,16 +194,13 @@ local function checkPowerShotAlignment()
 
     if not targetY then return end
 
-    -- พิกัด Y ปัจจุบันของคันธนู (ใช้จุดกึ่งกลางของไอคอนธนู)
     local bowCenterY = movingObj.AbsolutePosition.Y + (movingObj.AbsoluteSize.Y * 0.5)
     local tol = CONFIG.HitTolerancePixels
 
-    -- ตรวจสอบว่าคันธนูรีเซ็ตลงไปข้างล่างหรือยัง
     if bowCenterY > (targetY + 15) then
         hasResetToBottom = true
     end
 
-    -- ตรวจสอบความเร็วการเลื่อนขึ้น
     local isMovingUp = false
     if prevBowCenterY ~= nil then
         local delta = prevBowCenterY - bowCenterY
@@ -251,34 +209,20 @@ local function checkPowerShotAlignment()
         end
     end
 
-    -- ป้องกันปัญหา Lag: ดักจับทั้งการอยู่กึ่งกลาง และการที่ข้ามเป้าหมายในเฟรมเดียวตอน FPS ตก
     local isAtCenter = math.abs(bowCenterY - targetY) <= (tol + 2)
     local justPassed = (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 35)
     local crossedDuringLag = (prevBowCenterY ~= nil) and (prevBowCenterY >= targetY - 4) and (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 45)
 
     if hasResetToBottom and isMovingUp and (isAtCenter or justPassed or crossedDuringLag) then
-        hasResetToBottom = false -- ล็อคทันทีจนกว่าจะเริ่มรอบใหม่
+        hasResetToBottom = false
         lastTriggerTime = os.clock()
         currentShot = (currentShot % CONFIG.TotalShots) + 1
 
         triggerPerfectHit(clickPos)
-        notify("🎯 PERFECT!", string.format("ยิงที่กึ่งกลางแถบทองรอบที่ %d/%d สำเร็จ (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
+        notify("PERFECT", string.format("Power Shot %d/%d (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
     end
 
     prevBowCenterY = bowCenterY
-end
-
--- ========================================================
--- 🛡️ Auto Dodge Logic (Incoming! - White Zone)
--- ========================================================
-local lastDodgeTrigger = 0
-local lastNeedlePositionsX = {}
-local prevNeedleX = nil
-local dodgeHasReset = true
-
-local function isWhiteColor(c)
-    if not c then return false end
-    return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
 end
 
 local function findDodgeContainer()
@@ -409,28 +353,24 @@ local function checkDodgeAlignment()
         dodgeHasReset = false
         lastDodgeTrigger = os.clock()
         triggerPerfectHit(Vector2.new(whiteCenterX, whiteZone.AbsolutePosition.Y + (whiteZone.AbsoluteSize.Y * 0.5)))
-        notify("🛡️ DODGE!", string.format("Perfect Dodge สำเร็จ (X: %.1f / White: %.1f)", needleX, whiteCenterX))
+        notify("DODGE", string.format("Perfect Dodge (X: %.1f / White: %.1f)", needleX, whiteCenterX))
     end
 
     prevNeedleX = needleX
 end
 
--- ========================================================
--- 🔄 Listeners
--- ========================================================
 RunService.RenderStepped:Connect(function()
     checkPowerShotAlignment()
     checkDodgeAlignment()
 end)
 
--- ปุ่มลัด Toggle เปิด/ปิด
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == CONFIG.ToggleKey then
         CONFIG.Enabled = not CONFIG.Enabled
-        local status = CONFIG.Enabled and "เปิดใช้งาน (ENABLED)" or "ปิดใช้งาน (DISABLED)"
-        notify("Auto Bow & Dodge", "ระบบ: " .. status)
+        local status = CONFIG.Enabled and "ENABLED" or "DISABLED"
+        notify("Auto Minigame", "Status: " .. status)
     end
 end)
 
-notify("🏹 Minigame Assistant Loaded", "Auto Bow & Auto Dodge พร้อมทำงาน (กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิด)")
+notify("Minigame Assistant", "Loaded (Press [" .. CONFIG.ToggleKey.Name .. "] to Toggle)")
