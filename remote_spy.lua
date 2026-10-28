@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local function destroyAllOld()
-    local names = {"DuckBloxRemoteSpyUI", "DuckBloxRemoteSpyUI_v2", "DuckBloxCombatFinder"}
+    local names = {"DuckBloxRemoteSpyUI", "DuckBloxRemoteSpyUI_v2", "DuckBloxCombatFinder", "DuckBloxHardwareCursor"}
     for _, n in ipairs(names) do
         pcall(function()
             if typeof(gethui) == "function" and gethui():FindFirstChild(n) then
@@ -46,6 +46,21 @@ local function copyToClipboard(str)
         end
     end)
 end
+
+local CursorGui = Instance.new("ScreenGui")
+CursorGui.Name = "DuckBloxHardwareCursor"
+CursorGui.DisplayOrder = 999999999
+CursorGui.IgnoreGuiInset = true
+CursorGui.ResetOnSpawn = false
+CursorGui.Parent = parentGui
+
+local CursorImg = Instance.new("ImageLabel")
+CursorImg.Size = UDim2.new(0, 24, 0, 24)
+CursorImg.BackgroundTransparency = 1
+CursorImg.Image = "rbxasset://textures/ArrowCursor.png"
+CursorImg.ZIndex = 999999999
+CursorImg.Active = false
+CursorImg.Parent = CursorGui
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DuckBloxCombatFinder"
@@ -412,3 +427,14 @@ local function enableDragging(frame, handle)
 end
 
 enableDragging(MainFrame, TopBar)
+
+RunService.RenderStepped:Connect(function()
+    if not ScreenGui.Parent then
+        if CursorGui.Parent then CursorGui:Destroy() end
+        return
+    end
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    UserInputService.MouseIconEnabled = true
+    local pos = UserInputService:GetMouseLocation()
+    CursorImg.Position = UDim2.new(0, pos.X, 0, pos.Y)
+end)

@@ -48,6 +48,9 @@ local function cleanupAll()
     if parentGui and parentGui:FindFirstChild("DuckBloxCustomUI") then
         parentGui.DuckBloxCustomUI:Destroy()
     end
+    if parentGui and parentGui:FindFirstChild("DuckBloxHardwareCursor") then
+        parentGui.DuckBloxHardwareCursor:Destroy()
+    end
 end
 
 globalEnv.DuckBloxCleanup = cleanupAll
@@ -64,6 +67,13 @@ local THEME = {
     Border = Color3.fromRGB(45, 50, 65),
 }
 
+local CursorGui = Instance.new("ScreenGui")
+CursorGui.Name = "DuckBloxHardwareCursor"
+CursorGui.DisplayOrder = 999999999
+CursorGui.IgnoreGuiInset = true
+CursorGui.ResetOnSpawn = false
+CursorGui.Parent = parentGui
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DuckBloxCustomUI"
 ScreenGui.ResetOnSpawn = false
@@ -76,10 +86,10 @@ VirtualCursor.Name = "DuckBloxVirtualCursor"
 VirtualCursor.Size = UDim2.new(0, 24, 0, 24)
 VirtualCursor.BackgroundTransparency = 1
 VirtualCursor.Image = "rbxasset://textures/ArrowCursor.png"
-VirtualCursor.ZIndex = 999999
+VirtualCursor.ZIndex = 999999999
 VirtualCursor.Active = false
 VirtualCursor.Visible = false
-VirtualCursor.Parent = ScreenGui
+VirtualCursor.Parent = CursorGui
 
 local ToggleBubble = Instance.new("TextButton")
 ToggleBubble.Name = "ToggleBubble"
