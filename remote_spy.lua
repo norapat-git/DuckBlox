@@ -59,8 +59,8 @@ ScreenGui.Parent = parentGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 560, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -280, 0.5, -200)
+MainFrame.Size = UDim2.new(0, 580, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -290, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -99,7 +99,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -120, 1, 0)
 Title.Position = UDim2.new(0, 14, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "📡 DuckBlox Remote Spy & Explorer"
+Title.Text = "📡 PlatformBattles Inspector & Spy"
 Title.TextColor3 = Color3.fromRGB(245, 245, 250)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -151,9 +151,9 @@ LiveTabCorner.CornerRadius = UDim.new(0, 6)
 LiveTabCorner.Parent = LiveTabBtn
 
 local ExplorerTabBtn = Instance.new("TextButton")
-ExplorerTabBtn.Size = UDim2.new(0, 170, 1, 0)
+ExplorerTabBtn.Size = UDim2.new(0, 150, 1, 0)
 ExplorerTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-ExplorerTabBtn.Text = "📦 All Remotes (0)"
+ExplorerTabBtn.Text = "📦 Remotes (0)"
 ExplorerTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
 ExplorerTabBtn.Font = Enum.Font.GothamBold
 ExplorerTabBtn.TextSize = 12
@@ -164,8 +164,22 @@ local ExplorerTabCorner = Instance.new("UICorner")
 ExplorerTabCorner.CornerRadius = UDim.new(0, 6)
 ExplorerTabCorner.Parent = ExplorerTabBtn
 
+local ModulesTabBtn = Instance.new("TextButton")
+ModulesTabBtn.Size = UDim2.new(0, 150, 1, 0)
+ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+ModulesTabBtn.Text = "📜 Game Modules (0)"
+ModulesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
+ModulesTabBtn.Font = Enum.Font.GothamBold
+ModulesTabBtn.TextSize = 12
+ModulesTabBtn.AutoButtonColor = false
+ModulesTabBtn.Parent = TabBar
+
+local ModulesTabCorner = Instance.new("UICorner")
+ModulesTabCorner.CornerRadius = UDim.new(0, 6)
+ModulesTabCorner.Parent = ModulesTabBtn
+
 local ClearBtn = Instance.new("TextButton")
-ClearBtn.Size = UDim2.new(0, 70, 1, 0)
+ClearBtn.Size = UDim2.new(0, 60, 1, 0)
 ClearBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
 ClearBtn.Text = "Clear"
 ClearBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
@@ -182,8 +196,8 @@ local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -20, 0, 20)
 StatusLabel.Position = UDim2.new(0, 10, 0, 84)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Hook Status: Initializing..."
-StatusLabel.TextColor3 = Color3.fromRGB(140, 145, 165)
+StatusLabel.Text = "Native OnClientEvent Listener Active"
+StatusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -235,22 +249,56 @@ ExplorerPadding.PaddingTop = UDim.new(0, 4)
 ExplorerPadding.PaddingBottom = UDim.new(0, 10)
 ExplorerPadding.Parent = ExplorerScroll
 
-LiveTabBtn.MouseButton1Click:Connect(function()
-    LiveTabBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-    LiveTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+local ModulesScroll = Instance.new("ScrollingFrame")
+ModulesScroll.Size = UDim2.new(1, -20, 1, -114)
+ModulesScroll.Position = UDim2.new(0, 10, 0, 106)
+ModulesScroll.BackgroundTransparency = 1
+ModulesScroll.BorderSizePixel = 0
+ModulesScroll.ScrollBarThickness = 4
+ModulesScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
+ModulesScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ModulesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+ModulesScroll.Active = true
+ModulesScroll.Visible = false
+ModulesScroll.Parent = MainFrame
+
+local ModulesList = Instance.new("UIListLayout")
+ModulesList.Padding = UDim.new(0, 6)
+ModulesList.SortOrder = Enum.SortOrder.LayoutOrder
+ModulesList.Parent = ModulesScroll
+
+local ModulesPadding = Instance.new("UIPadding")
+ModulesPadding.PaddingTop = UDim.new(0, 4)
+ModulesPadding.PaddingBottom = UDim.new(0, 10)
+ModulesPadding.Parent = ModulesScroll
+
+local function selectTab(activeBtn, activeScroll)
+    LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+    LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
     ExplorerTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
     ExplorerTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-    LiveScroll.Visible = true
+    ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+    ModulesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
+
+    LiveScroll.Visible = false
     ExplorerScroll.Visible = false
+    ModulesScroll.Visible = false
+
+    activeBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    activeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    activeScroll.Visible = true
+end
+
+LiveTabBtn.MouseButton1Click:Connect(function()
+    selectTab(LiveTabBtn, LiveScroll)
 end)
 
 ExplorerTabBtn.MouseButton1Click:Connect(function()
-    ExplorerTabBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-    ExplorerTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-    LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-    ExplorerScroll.Visible = true
-    LiveScroll.Visible = false
+    selectTab(ExplorerTabBtn, ExplorerScroll)
+end)
+
+ModulesTabBtn.MouseButton1Click:Connect(function()
+    selectTab(ModulesTabBtn, ModulesScroll)
 end)
 
 ClearBtn.MouseButton1Click:Connect(function()
@@ -305,10 +353,11 @@ local function addLiveEntry(remoteObj, method, args)
     head.BackgroundTransparency = 1
     head.Parent = card
 
+    local tagColor = method:find("Client") and "#3498DB" or "#2ECC71"
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Size = UDim2.new(1, -85, 1, 0)
     titleLbl.BackgroundTransparency = 1
-    titleLbl.Text = string.format("<font color=\"#5865F2\">[%s]</font> <font color=\"#2ECC71\">%s</font> • %s", timeStr, method, name)
+    titleLbl.Text = string.format("<font color=\"#5865F2\">[%s]</font> <font color=\"%s\">%s</font> • %s", timeStr, tagColor, method, name)
     titleLbl.RichText = true
     titleLbl.TextColor3 = Color3.fromRGB(245, 245, 250)
     titleLbl.Font = Enum.Font.GothamBold
@@ -367,13 +416,7 @@ local function addLiveEntry(remoteObj, method, args)
     argsBox.Parent = card
 end
 
-local explorerCount = 0
-local function populateAllRemotes()
-    for _, child in ipairs(ExplorerScroll:GetChildren()) do
-        if child:IsA("Frame") then child:Destroy() end
-    end
-    explorerCount = 0
-
+local function populateRemotes()
     local targets = {}
     for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
@@ -381,17 +424,9 @@ local function populateAllRemotes()
         end
     end
 
-    local localPlayer = Players.LocalPlayer
-    if localPlayer then
-        for _, obj in ipairs(localPlayer:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") then
-                table.insert(targets, obj)
-            end
-        end
-    end
-
+    local count = 0
     for _, obj in ipairs(targets) do
-        explorerCount = explorerCount + 1
+        count = count + 1
         local path = obj:GetFullName()
         local name = obj.Name
         local cName = obj.ClassName
@@ -462,10 +497,118 @@ local function populateAllRemotes()
         end)
     end
 
-    ExplorerTabBtn.Text = string.format("📦 All Remotes (%d)", explorerCount)
+    ExplorerTabBtn.Text = string.format("📦 Remotes (%d)", count)
 end
 
-populateAllRemotes()
+local function populateModules()
+    local modules = {}
+    local pb = ReplicatedStorage:FindFirstChild("PlatformBattles")
+    if pb then
+        for _, obj in ipairs(pb:GetDescendants()) do
+            if obj:IsA("ModuleScript") then
+                table.insert(modules, obj)
+            end
+        end
+    end
+
+    local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
+    if ps then
+        for _, obj in ipairs(ps:GetDescendants()) do
+            if obj:IsA("ModuleScript") then
+                table.insert(modules, obj)
+            end
+        end
+    end
+
+    local count = 0
+    for _, mod in ipairs(modules) do
+        count = count + 1
+        local path = mod:GetFullName()
+        local name = mod.Name
+
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(1, 0, 0, 40)
+        card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+        card.BorderSizePixel = 0
+        card.Parent = ModulesScroll
+
+        local cardCorner = Instance.new("UICorner")
+        cardCorner.CornerRadius = UDim.new(0, 6)
+        cardCorner.Parent = card
+
+        local cardPad = Instance.new("UIPadding")
+        cardPad.PaddingLeft = UDim.new(0, 10)
+        cardPad.PaddingRight = UDim.new(0, 10)
+        cardPad.Parent = card
+
+        local titleLbl = Instance.new("TextLabel")
+        titleLbl.Size = UDim2.new(1, -85, 0, 20)
+        titleLbl.Position = UDim2.new(0, 0, 0, 2)
+        titleLbl.BackgroundTransparency = 1
+        titleLbl.Text = string.format("<font color=\"#F39C12\">[Module]</font> <b>%s</b>", name)
+        titleLbl.RichText = true
+        titleLbl.TextColor3 = Color3.fromRGB(240, 240, 245)
+        titleLbl.Font = Enum.Font.GothamBold
+        titleLbl.TextSize = 12
+        titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+        titleLbl.Parent = card
+
+        local pathLbl = Instance.new("TextLabel")
+        pathLbl.Size = UDim2.new(1, -85, 0, 16)
+        pathLbl.Position = UDim2.new(0, 0, 0, 22)
+        pathLbl.BackgroundTransparency = 1
+        pathLbl.Text = path
+        pathLbl.TextColor3 = Color3.fromRGB(140, 145, 165)
+        pathLbl.Font = Enum.Font.Code
+        pathLbl.TextSize = 10.5
+        pathLbl.TextXAlignment = Enum.TextXAlignment.Left
+        pathLbl.Parent = card
+
+        local copyBtn = Instance.new("TextButton")
+        copyBtn.Size = UDim2.new(0, 75, 0, 24)
+        copyBtn.Position = UDim2.new(1, -75, 0.5, -12)
+        copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+        copyBtn.Text = "📋 Copy"
+        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        copyBtn.Font = Enum.Font.GothamBold
+        copyBtn.TextSize = 11
+        copyBtn.AutoButtonColor = false
+        copyBtn.Parent = card
+
+        local copyCorner = Instance.new("UICorner")
+        copyCorner.CornerRadius = UDim.new(0, 6)
+        copyCorner.Parent = copyBtn
+
+        copyBtn.MouseButton1Click:Connect(function()
+            copyToClipboard(path)
+            copyBtn.Text = "✅ Copied!"
+            copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+            task.wait(1.5)
+            if copyBtn.Parent then
+                copyBtn.Text = "📋 Copy"
+                copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+            end
+        end)
+    end
+
+    ModulesTabBtn.Text = string.format("📜 Game Modules (%d)", count)
+end
+
+populateRemotes()
+populateModules()
+
+for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+    if obj:IsA("RemoteEvent") then
+        pcall(function()
+            obj.OnClientEvent:Connect(function(...)
+                local args = {...}
+                task.spawn(function()
+                    addLiveEntry(obj, "OnClientEvent", args)
+                end)
+            end)
+        end)
+    end
+end
 
 local function enableDragging(frame, handle)
     local dragging = false
@@ -503,11 +646,9 @@ end
 
 enableDragging(MainFrame, TopBar)
 
-local hookSuccess = false
-
 if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "function" then
     local oldNamecall
-    local success, err = pcall(function()
+    pcall(function()
         oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             local method = getnamecallmethod()
             if method == "FireServer" or method == "InvokeServer" or method == "Fire" or method == "Invoke" then
@@ -522,16 +663,4 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
             return oldNamecall(self, ...)
         end)
     end)
-
-    if success then
-        hookSuccess = true
-        StatusLabel.Text = "✅ Hook Status: Active (Listening for FireServer/InvokeServer)"
-        StatusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
-    else
-        StatusLabel.Text = "⚠️ hookmetamethod error: " .. tostring(err)
-        StatusLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
-    end
-else
-    StatusLabel.Text = "⚠️ Executor does not support hookmetamethod! Use [All Remotes] tab."
-    StatusLabel.TextColor3 = Color3.fromRGB(241, 196, 15)
 end
