@@ -2,11 +2,11 @@
     ========================================================================
     🏹 Auto Perfect "POWER SHOT" Bow Minigame - LocalScript
     ========================================================================
-    ออกแบบเฉพาะสำหรับมินิเกมยิงธนู Power Shot (4 จังหวะ):
-    - "Shoot when the power hits the gold band! [SPACE / CLICK]"
-    - ตรวจจับแถบสีทอง (Gold Band) และการเลื่อนขึ้นของคันธนู / แถบพลังงานสีเขียว (Vertical Y-Axis)
-    - ยิงระดับ Frame-Perfect (RenderStepped) ทันทีที่เข้าสู่ Gold Band
-    - จำลองการกด [SPACEBAR] และ [LEFT CLICK] ครบ 4 รอบอัตโนมัติ
+    ปรับปรุงระบบคำนวณตำแหน่งจังหวะ Perfect:
+    - แก้ไขปัญหากดเร็วเกินไป (Early): เดิมทีกดทันทีที่แตะขอบล่างของแถบ
+    - ปรับมาเล็งที่ "กึ่งกลางของแถบสีทอง (Center of Gold Band)" หรือ "กลางหลอด" พอดีเป๊ะ
+    - มีระบบ Motion Tracker ตรวจจับเฉพาะวัตถุที่กำลังขยับเลื่อนขึ้นจริงแบบ Real-time
+    - ปรับชดเชยค่า Offset ได้ (TargetOffset) เพื่อความแม่นยำสูงสุด
     ========================================================================
 --]]
 
@@ -27,14 +27,21 @@ local CONFIG = {
     ToggleKey = Enum.KeyCode.V,    -- ปุ่มลัด Toggle (กด V บนคีย์บอร์ด)
     
     TotalShots = 4,                -- มินิเกมนี้มีทั้งหมด 4 รอบ
-    HitTolerancePixels = 6,        -- ระยะเผื่อความคลาดเคลื่อน (พิกเซล)
-    ClickCooldown = 0.45,          -- คูลดาวน์หน่วงเวลาระหว่างรอบยิง (วินาที)
+    HitTolerancePixels = 4,        -- ขอบเขตความคลาดเคลื่อน (พิกเซล)
+    ClickCooldown = 0.5,           -- คูลดาวน์ระหว่างรอบยิง (วินาที)
+    
+    -- การปรับตำแหน่งเล็ง:
+    -- 0 = กึ่งกลางแถบสีทอง (Gold Band Center) พอดีเป๊ะ
+    -- ติดลบ (-) = ให้เลื่อนขึ้นไปสูงขึ้นอีกนิดก่อนกด (หน่วงเวลากดช้าลง)
+    -- เป็นบวก (+) = ให้กดเร็วขึ้นอีกนิด
+    TargetOffsetY = -2,
     
     Notification = true,
 }
 
 local currentShot = 0
 local lastTriggerTime = 0
+local lastPositions = {}           -- บันทึกพิกัดเฟรมก่อนหน้าเพื่อหาตัวที่กำลังขยับ
 
 -- ========================================================
 -- 🔔 Notification Helper
@@ -82,32 +89,23 @@ local function triggerPerfectHit(clickPosition)
 end
 
 -- ========================================================
--- 🔍 Power Shot UI Scanner
+-- 🔍 Scanner & Target Calculation
 -- ========================================================
 
--- ตรวจสอบว่าสีคล้ายกับ Gold Band หรือไม่ (โทนเหลือง/ทอง)
+-- ตรวจสอบสีโทนทอง/เหลืองของ Gold Band
 local function isGoldColor(color)
     if not color then return false end
-    -- Gold Band มีค่า R สูง, G ปานกลาง-สูง, B ต่ำกว่า R/G
     return (color.R > 0.65) and (color.G > 0.55) and (color.B < 0.6) and (color.R >= color.B + 0.15)
 end
 
--- ตรวจสอบว่าสีคล้ายกับ Green Fill หรือไม่ (แถบพลังงานสีเขียว)
-local function isGreenColor(color)
-    if not color then return false end
-    return (color.G > 0.55) and (color.G > color.R) and (color.G > color.B)
-end
-
--- ค้นหาหน้าจอ Power Shot โดยเฉพาะ
+-- ค้นหา Container หลักของ Power Shot
 local function findPowerShotContainer()
     for _, gui in ipairs(PlayerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
-            -- สแกนหา TextLabel ที่มีคำเฉพาะของมินิเกมนี้
             for _, label in ipairs(gui:GetDescendants()) do
                 if label:IsA("TextLabel") and label.Visible then
                     local text = label.Text:upper()
                     if text:find("POWER SHOT") or text:find("GOLD BAND") or text:find("SPACE / CLICK") then
-                        -- ดึง Frame หลักที่ครอบคลุมมินิเกม
                         local container = label:FindFirstAncestorOfClass("Frame") or label.Parent
                         return container or gui
                     end
@@ -118,63 +116,78 @@ local function findPowerShotContainer()
     return nil
 end
 
--- ค้นหา Gold Band (แถบสีทอง)
-local function findGoldBand(container)
-    -- ค้นหาตามชื่อก่อน
+-- ค้นหาแถบสีทอง (Gold Band) และหลอดพลังงาน
+local function findGoldBandAndGauge(container)
+    local goldBand = nil
+    local gaugeFrame = nil
+
     for _, obj in ipairs(container:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible then
             local name = obj.Name:lower()
-            if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
-                return obj
+            -- ค้นหา Gold Band
+            if not goldBand then
+                if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
+                    goldBand = obj
+                elseif obj.AbsoluteSize.Y > 0 and isGoldColor(obj.BackgroundColor3) then
+                    goldBand = obj
+                end
+            end
+
+            -- ค้นหาตัวหลอด Gauge หลัก
+            if not gaugeFrame then
+                if name:find("gauge") or name:find("bar") or name:find("meter") or name:find("power") then
+                    if obj.AbsoluteSize.Y > 50 then
+                        gaugeFrame = obj
+                    end
+                end
             end
         end
     end
 
-    -- หากไม่เจอตามชื่อ ให้ตรวจจากค่าสี (BackgroundColor3 / ImageColor3)
-    for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 0 then
-            if isGoldColor(obj.BackgroundColor3) then
-                return obj
-            end
-            if obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3) then
-                return obj
-            end
-        end
-    end
-
-    return nil
+    return goldBand, gaugeFrame
 end
 
--- ค้นหาคันธนู (Bow Icon) หรือ แถบพลังงานสีเขียว (Green Fill)
-local function findMovingIndicator(container)
-    -- 1. หาคันธนูที่เลื่อนขึ้นข้างหลอด (ImageLabel หรือ Frame ที่มีคำว่า Bow, Arrow, Needle, Icon)
+-- ค้นหาวัตถุที่กำลังขยับเลื่อนขึ้น (Motion Tracking)
+local function getMovingObject(container)
+    local movingObj = nil
+    local maxMove = 0
+
     for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible then
+        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 0 then
             local name = obj.Name:lower()
-            if name:find("bow") or name:find("arrow") or name:find("needle") or name:find("pointer") or name:find("cursor") then
-                return obj, "BOW"
+            -- กรองเอาเฉพาะตัวที่น่าจะเป็นคันธนู, ลูกศร หรือหลอดพลังงาน
+            if name:find("bow") or name:find("arrow") or name:find("pointer") or name:find("needle") or name:find("fill") or name:find("bar") then
+                local prevY = lastPositions[obj]
+                local curY = obj.AbsolutePosition.Y
+                if prevY ~= nil then
+                    local delta = prevY - curY -- เลื่อนขึ้น = delta เป็นบวก
+                    if delta > 0.15 and delta > maxMove then
+                        maxMove = delta
+                        movingObj = obj
+                    end
+                end
+                lastPositions[obj] = curY
             end
         end
     end
 
-    -- 2. หาแถบพลังงานสีเขียว (Green Fill)
-    for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible then
-            local name = obj.Name:lower()
-            if (name:find("fill") or name:find("bar") or name:find("power")) and obj.AbsoluteSize.Y > 5 then
-                return obj, "FILL"
-            end
-            if isGreenColor(obj.BackgroundColor3) and obj.AbsoluteSize.Y > 5 then
-                return obj, "FILL"
+    -- Fallback: หากยังไม่พบการขยับ ให้หาตามชื่อคันธนู
+    if not movingObj then
+        for _, obj in ipairs(container:GetDescendants()) do
+            if obj:IsA("GuiObject") and obj.Visible then
+                local name = obj.Name:lower()
+                if (name:find("bow") or name:find("arrow")) and not name:find("shadow") and not name:find("bg") then
+                    return obj
+                end
             end
         end
     end
 
-    return nil, nil
+    return movingObj
 end
 
 -- ========================================================
--- ⚡ Real-Time Vertical Detection (RenderStepped)
+-- ⚡ Real-Time Center Alignment (RenderStepped)
 -- ========================================================
 local function checkPowerShotAlignment()
     if not CONFIG.Enabled then return end
@@ -182,47 +195,58 @@ local function checkPowerShotAlignment()
 
     local container = findPowerShotContainer()
     if not container then
-        -- ถ้าหน้าต่างมินิเกมหายไป ให้รีเซ็ตรอบยิง
         if currentShot ~= 0 then
             currentShot = 0
+            lastPositions = {}
         end
         return
     end
 
-    local goldBand = findGoldBand(container)
-    local indicator, indType = findMovingIndicator(container)
+    local goldBand, gaugeFrame = findGoldBandAndGauge(container)
+    local movingObj = getMovingObject(container)
 
-    if not goldBand or not indicator then return end
+    if not movingObj then return end
 
-    -- พิกัดแนวตั้ง (Y-Axis) ของแถบสีทอง (Gold Band)
-    local goldTop = goldBand.AbsolutePosition.Y
-    local goldBottom = goldBand.AbsolutePosition.Y + goldBand.AbsoluteSize.Y
-    local tol = CONFIG.HitTolerancePixels
+    -- คำนวณพิกัดเป้าหมาย (Target Y):
+    -- ลำดับที่ 1: เล็งที่ "กึ่งกลางของแถบสีทอง" (Center of Gold Band)
+    -- ลำดับที่ 2: หากหาแถบทองไม่เจอ ให้เล็งที่กึ่งกลางหลอด Gauge (Center of Gauge)
+    local targetY = nil
+    local clickPos = nil
 
-    -- คำนวณตำแหน่ง Y ปัจจุบันของตัวที่เคลื่อนที่
-    local currentY = nil
-    if indType == "BOW" then
-        -- ใช้จุดกึ่งกลางของคันธนู/ลูกศร
-        currentY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y / 2)
-    elseif indType == "FILL" then
-        -- แถบพลังงานเลื่อนขึ้นจากล่างขึ้นบน -> ขอบบนสุดของแท่งสีเขียวคือ AbsolutePosition.Y
-        currentY = indicator.AbsolutePosition.Y
+    if goldBand then
+        local goldCenter = goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y * 0.5)
+        targetY = goldCenter + CONFIG.TargetOffsetY
+        clickPos = Vector2.new(
+            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
+            goldCenter
+        )
+    elseif gaugeFrame then
+        local gaugeCenter = gaugeFrame.AbsolutePosition.Y + (gaugeFrame.AbsoluteSize.Y * 0.48)
+        targetY = gaugeCenter + CONFIG.TargetOffsetY
+        clickPos = Vector2.new(
+            gaugeFrame.AbsolutePosition.X + (gaugeFrame.AbsoluteSize.X / 2),
+            gaugeCenter
+        )
     end
 
-    if not currentY then return end
+    if not targetY then return end
 
-    -- ตรวจสอบว่าจุดที่เลื่อนขึ้น เข้าไปอยู่ในกรอบความสูงของแถบสีทองแล้วหรือยัง
-    if (currentY >= (goldTop - tol)) and (currentY <= (goldBottom + tol)) then
+    -- พิกัด Y ปัจจุบันของคันธนู (ใช้จุดกึ่งกลางของไอคอนธนู)
+    local bowCenterY = movingObj.AbsolutePosition.Y + (movingObj.AbsoluteSize.Y * 0.5)
+    local tol = CONFIG.HitTolerancePixels
+
+    -- ตรวจสอบว่าคันธนูเลื่อนขึ้นมาถึงจุดกึ่งกลางหรือยัง:
+    -- เนื่องจากหลอดเลื่อนขึ้นจากล่างขึ้นบน: ค่า Y จะลดลงเรื่อยๆ
+    -- เมื่อ bowCenterY <= targetY + tol และยังไม่เลยเป้าหมายไปไกล
+    local isAtCenter = math.abs(bowCenterY - targetY) <= tol
+    local justPassedCenter = (bowCenterY <= targetY) and (bowCenterY >= targetY - 12)
+
+    if isAtCenter or justPassedCenter then
         lastTriggerTime = os.clock()
         currentShot = (currentShot % CONFIG.TotalShots) + 1
 
-        local clickPos = Vector2.new(
-            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
-            goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y / 2)
-        )
-
         triggerPerfectHit(clickPos)
-        notify("🎯 PERFECT!", string.format("ยิงจังหวะ Perfect รอบที่ %d/%d สำเร็จ", currentShot, CONFIG.TotalShots))
+        notify("🎯 PERFECT!", string.format("ยิงที่กึ่งกลางแถบทองรอบที่ %d/%d สำเร็จ (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
     end
 end
 
@@ -241,4 +265,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-notify("🏹 Power Shot Loaded", "ระบบ Auto Perfect พร้อมทำงาน (กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิด)")
+notify("🏹 Power Shot Loaded", "เล็งกึ่งกลางแถบทอง (Perfect Center) กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิด")

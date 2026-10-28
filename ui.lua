@@ -435,29 +435,34 @@ local function scanAndTriggerBow()
 
     if not activeContainer then return end
 
-    -- ค้นหา Gold Band (แถบสีทอง)
     local goldBand = nil
+    local gaugeFrame = nil
+
     for _, obj in ipairs(activeContainer:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible then
             local name = obj.Name:lower()
-            if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
-                goldBand = obj
-                break
+            if not goldBand then
+                if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
+                    goldBand = obj
+                elseif obj.AbsoluteSize.Y > 0 and (isGoldColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3))) then
+                    goldBand = obj
+                end
             end
-            if obj.AbsoluteSize.Y > 0 and (isGoldColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3))) then
-                goldBand = obj
-                break
+            if not gaugeFrame then
+                if (name:find("gauge") or name:find("bar") or name:find("meter") or name:find("power")) and obj.AbsoluteSize.Y > 50 then
+                    gaugeFrame = obj
+                end
             end
         end
     end
 
-    -- ค้นหาคันธนู (Bow) หรือแถบพลังงานสีเขียว (Fill Bar)
-    local indicator, indType = nil, nil
+    -- ค้นหาคันธนู (Bow) หรือตัวที่กำลังเลื่อน
+    local indicator = nil
     for _, obj in ipairs(activeContainer:GetDescendants()) do
         if obj:IsA("GuiObject") and obj.Visible then
             local name = obj.Name:lower()
-            if name:find("bow") or name:find("arrow") or name:find("needle") or name:find("pointer") then
-                indicator, indType = obj, "BOW"
+            if (name:find("bow") or name:find("arrow") or name:find("pointer")) and not name:find("shadow") and not name:find("bg") then
+                indicator = obj
                 break
             end
         end
@@ -468,37 +473,48 @@ local function scanAndTriggerBow()
             if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 5 then
                 local name = obj.Name:lower()
                 if name:find("fill") or name:find("power") or isGreenColor(obj.BackgroundColor3) then
-                    indicator, indType = obj, "FILL"
+                    indicator = obj
                     break
                 end
             end
         end
     end
 
-    if not goldBand or not indicator then return end
+    if not indicator then return end
 
-    local goldTop = goldBand.AbsolutePosition.Y
-    local goldBottom = goldBand.AbsolutePosition.Y + goldBand.AbsoluteSize.Y
-    local tol = BOW_SETTINGS.Tolerance
+    -- คำนวณจุดเป้าหมาย: กึ่งกลางของ Gold Band
+    local targetY = nil
+    local clickPos = nil
 
-    local currentY = nil
-    if indType == "BOW" then
-        currentY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y / 2)
-    elseif indType == "FILL" then
-        currentY = indicator.AbsolutePosition.Y
-    else
-        currentY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y / 2)
+    if goldBand then
+        local goldCenter = goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y * 0.5)
+        targetY = goldCenter - 2 -- ขยับขึ้นไปหากึ่งกลางเป๊ะ
+        clickPos = Vector2.new(
+            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
+            goldCenter
+        )
+    elseif gaugeFrame then
+        local gaugeCenter = gaugeFrame.AbsolutePosition.Y + (gaugeFrame.AbsoluteSize.Y * 0.48)
+        targetY = gaugeCenter - 2
+        clickPos = Vector2.new(
+            gaugeFrame.AbsolutePosition.X + (gaugeFrame.AbsoluteSize.X / 2),
+            gaugeCenter
+        )
     end
 
-    -- ตรวจสอบว่าตำแหน่ง Y เข้าสู่กรอบ Gold Band แล้วหรือยัง
-    if (currentY >= (goldTop - tol)) and (currentY <= (goldBottom + tol)) then
+    if not targetY then return end
+
+    local bowCenterY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y * 0.5)
+    local tol = BOW_SETTINGS.Tolerance
+
+    -- กดเมื่อคันธนูเลื่อนมาถึงจุดกึ่งกลางของแถบทอง (แทนที่จะกดตรงขอบล่าง)
+    local isAtCenter = math.abs(bowCenterY - targetY) <= tol
+    local justPassedCenter = (bowCenterY <= targetY) and (bowCenterY >= targetY - 10)
+
+    if isAtCenter or justPassedCenter then
         lastBowTrigger = os.clock()
-        local clickPos = Vector2.new(
-            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
-            goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y / 2)
-        )
         triggerBowClick(clickPos.X, clickPos.Y)
-        print("[Auto Bow] 🎯 POWER SHOT - Perfect Hit Triggered!")
+        print(string.format("[Auto Bow] 🎯 POWER SHOT - Perfect Center Hit (Y: %.1f / Target: %.1f)", bowCenterY, targetY))
     end
 end
 
