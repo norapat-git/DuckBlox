@@ -272,30 +272,37 @@ local bowHasResetToBottom = true
 local prevBowY = nil
 
 local BOW_SETTINGS = {
-    Cooldown = 0.45,
+    Cooldown = 0.4,
     Tolerance = 5,
 }
 
-local function triggerBowClick(x, y)
-    pcall(function()
-        local clickX = x or (workspace.CurrentCamera.ViewportSize.X / 2)
-        local clickY = y or (workspace.CurrentCamera.ViewportSize.Y / 2)
-        VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 0)
-        task.wait(0.015)
-        VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
+local function triggerSpacebar()
+    task.spawn(function()
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.02)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        end)
     end)
+end
 
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-        task.wait(0.015)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-    end)
-
-    pcall(function()
-        local char = LocalPlayer.Character
-        local tool = char and char:FindFirstChildOfClass("Tool")
-        if tool then tool:Activate() end
-    end)
+local function isActuallyVisible(obj)
+    if not obj or not obj:IsA("GuiObject") then return false end
+    if not obj.Visible or obj.AbsoluteSize.X <= 0 or obj.AbsoluteSize.Y <= 0 then
+        return false
+    end
+    local parent = obj.Parent
+    while parent do
+        if parent:IsA("GuiObject") then
+            if not parent.Visible then
+                return false
+            end
+        elseif parent:IsA("LayerCollector") then
+            return parent.Enabled
+        end
+        parent = parent.Parent
+    end
+    return true
 end
 
 local function isGoldColor(color)
@@ -319,21 +326,23 @@ local function scanAndTriggerBow()
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
             for _, label in ipairs(gui:GetDescendants()) do
-                if label:IsA("TextLabel") and label.Visible then
+                if label:IsA("TextLabel") and isActuallyVisible(label) then
                     local text = label.Text:upper()
-                    if text:find("POWER SHOT") or text:find("GOLD BAND") or text:find("SPACE / CLICK") then
-                        activeContainer = label:FindFirstAncestorOfClass("Frame") or label.Parent or gui
+                    if text:find("POWER SHOT") or text:find("GOLD BAND") then
+                        local ancestor = label.Parent
+                        while ancestor and ancestor ~= gui do
+                            if ancestor:IsA("Frame") and ancestor.AbsoluteSize.X >= 200 and ancestor.AbsoluteSize.Y >= 120 then
+                                activeContainer = ancestor
+                                break
+                            end
+                            ancestor = ancestor.Parent
+                        end
+                        activeContainer = activeContainer or gui
                         break
                     end
                 end
             end
             if activeContainer then break end
-
-            local lname = gui.Name:lower()
-            if lname:find("bow") or lname:find("minigame") or lname:find("qte") or lname:find("timing") then
-                activeContainer = gui
-                break
-            end
         end
     end
 
@@ -347,7 +356,7 @@ local function scanAndTriggerBow()
     local gaugeFrame = nil
 
     for _, obj in ipairs(activeContainer:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible then
+        if obj:IsA("GuiObject") and isActuallyVisible(obj) then
             local name = obj.Name:lower()
             if not goldBand then
                 if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
@@ -366,7 +375,7 @@ local function scanAndTriggerBow()
 
     local indicator = nil
     for _, obj in ipairs(activeContainer:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible then
+        if obj:IsA("GuiObject") and isActuallyVisible(obj) then
             local name = obj.Name:lower()
             if (name:find("bow") or name:find("arrow") or name:find("pointer")) and not name:find("shadow") and not name:find("bg") then
                 indicator = obj
@@ -377,7 +386,7 @@ local function scanAndTriggerBow()
 
     if not indicator then
         for _, obj in ipairs(activeContainer:GetDescendants()) do
-            if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 5 then
+            if obj:IsA("GuiObject") and isActuallyVisible(obj) and obj.AbsoluteSize.Y > 5 then
                 local name = obj.Name:lower()
                 if name:find("fill") or name:find("power") or isGreenColor(obj.BackgroundColor3) then
                     indicator = obj
@@ -390,22 +399,13 @@ local function scanAndTriggerBow()
     if not indicator then return end
 
     local targetY = nil
-    local clickPos = nil
 
     if goldBand then
         local goldCenter = goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y * 0.5)
         targetY = goldCenter - 2
-        clickPos = Vector2.new(
-            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
-            goldCenter
-        )
     elseif gaugeFrame then
         local gaugeCenter = gaugeFrame.AbsolutePosition.Y + (gaugeFrame.AbsoluteSize.Y * 0.48)
         targetY = gaugeCenter - 2
-        clickPos = Vector2.new(
-            gaugeFrame.AbsolutePosition.X + (gaugeFrame.AbsoluteSize.X / 2),
-            gaugeCenter
-        )
     end
 
     if not targetY then return end
@@ -432,7 +432,7 @@ local function scanAndTriggerBow()
     if bowHasResetToBottom and isMovingUp and (isAtCenter or justPassed or crossedDuringLag) then
         bowHasResetToBottom = false
         lastBowTrigger = os.clock()
-        triggerBowClick(clickPos.X, clickPos.Y)
+        triggerSpacebar()
     end
 
     prevBowY = bowCenterY
@@ -460,13 +460,17 @@ local prevNeedleX = nil
 local dodgeHasReset = true
 
 local DODGE_SETTINGS = {
-    Cooldown = 0.45,
-    Tolerance = 8,
+    Cooldown = 0.25,
 }
 
 local function isWhiteColor(c)
     if not c then return false end
     return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
+end
+
+local function isRedNeedleColor(c)
+    if not c then return false end
+    return (c.R > 0.70) and (c.G < 0.58) and (c.B < 0.58) and ((c.R - c.G) > 0.20)
 end
 
 local function findDodgeContainer()
@@ -476,9 +480,16 @@ local function findDodgeContainer()
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
             for _, label in ipairs(gui:GetDescendants()) do
-                if label:IsA("TextLabel") and label.Visible then
+                if label:IsA("TextLabel") and isActuallyVisible(label) then
                     local text = label.Text:upper()
-                    if text:find("INCOMING") or text:find("DODGE") or text:find("YOUR SHIELD") then
+                    if text:find("INCOMING") or text:find("HITS YOUR SHIELD") or text:find("DODGE = WHITE") or text:find("YOUR SHIELD") then
+                        local ancestor = label.Parent
+                        while ancestor and ancestor ~= gui do
+                            if ancestor:IsA("Frame") and ancestor.AbsoluteSize.X >= 250 and ancestor.AbsoluteSize.Y >= 120 and isActuallyVisible(ancestor) then
+                                return ancestor
+                            end
+                            ancestor = ancestor.Parent
+                        end
                         return gui
                     end
                 end
@@ -489,58 +500,69 @@ local function findDodgeContainer()
 end
 
 local function getMovingNeedle(container)
-    local bestObj = nil
+    local redBarCandidate = nil
+    local movingCandidate = nil
     local maxMoveX = 0
 
     for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 8 then
-            local prevX = lastNeedlePositionsX[obj]
-            local curX = obj.AbsolutePosition.X
-            if prevX ~= nil then
-                local deltaX = math.abs(prevX - curX)
-                if deltaX > 0.2 and deltaX > maxMoveX then
-                    maxMoveX = deltaX
-                    bestObj = obj
+        if obj:IsA("GuiObject") and not obj:IsA("TextLabel") and not obj:IsA("TextButton") and isActuallyVisible(obj) then
+            local sx = obj.AbsoluteSize.X
+            local sy = obj.AbsoluteSize.Y
+
+            if sx >= 2 and sx <= 28 and sy >= 24 and sy <= 150 and sy > (sx * 1.8) then
+                local isRed = (obj.BackgroundTransparency < 0.6 and isRedNeedleColor(obj.BackgroundColor3))
+                    or (obj:IsA("ImageLabel") and obj.ImageTransparency < 0.6 and isRedNeedleColor(obj.ImageColor3))
+
+                if isRed and not redBarCandidate then
+                    redBarCandidate = obj
                 end
+
+                local prevX = lastNeedlePositionsX[obj]
+                local curX = obj.AbsolutePosition.X
+                if prevX ~= nil then
+                    local deltaX = math.abs(prevX - curX)
+                    if deltaX > 0.15 and deltaX > maxMoveX then
+                        maxMoveX = deltaX
+                        movingCandidate = obj
+                    end
+                end
+                lastNeedlePositionsX[obj] = curX
             end
-            lastNeedlePositionsX[obj] = curX
         end
     end
 
-    if not bestObj then
-        for _, obj in ipairs(container:GetDescendants()) do
-            if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 10 and obj.AbsoluteSize.X < 25 then
-                local name = obj.Name:lower()
-                if name:find("needle") or name:find("pointer") or name:find("line") or name:find("cursor") then
-                    return obj
-                end
-            end
-        end
-    end
-
-    return bestObj
+    return redBarCandidate or movingCandidate
 end
 
 local function findWhiteDodgeZone(container, needle)
-    local needleY = needle.AbsolutePosition.Y
+    local needleCenterY = needle.AbsolutePosition.Y + (needle.AbsoluteSize.Y * 0.5)
+    local bestZone = nil
+    local bestDiffY = 999
 
     for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible and obj ~= needle then
-            if obj.AbsoluteSize.X > 5 and obj.BackgroundTransparency < 0.6 then
-                if math.abs(obj.AbsolutePosition.Y - needleY) < 40 then
-                    local name = obj.Name:lower()
-                    if name:find("white") or name:find("dodge") or name:find("sweet") or name:find("target") then
-                        return obj
-                    end
-                    if isWhiteColor(obj.BackgroundColor3) then
-                        return obj
+        if obj:IsA("GuiObject") and not obj:IsA("TextLabel") and not obj:IsA("TextButton") and obj ~= needle and isActuallyVisible(obj) then
+            if not obj:IsDescendantOf(needle) and not needle:IsDescendantOf(obj) then
+                local sx = obj.AbsoluteSize.X
+                local sy = obj.AbsoluteSize.Y
+
+                if sx >= 14 and sx <= 260 and sy >= 16 and sy <= 90 then
+                    local isWhite = (obj.BackgroundTransparency < 0.5 and isWhiteColor(obj.BackgroundColor3))
+                        or (obj:IsA("ImageLabel") and obj.ImageTransparency < 0.5 and isWhiteColor(obj.ImageColor3))
+
+                    if isWhite then
+                        local objCenterY = obj.AbsolutePosition.Y + (sy * 0.5)
+                        local diffY = math.abs(objCenterY - needleCenterY)
+                        if diffY <= 24 and diffY < bestDiffY then
+                            bestDiffY = diffY
+                            bestZone = obj
+                        end
                     end
                 end
             end
         end
     end
 
-    return nil
+    return bestZone
 end
 
 local function scanAndTriggerDodge()
@@ -563,43 +585,38 @@ local function scanAndTriggerDodge()
 
     local whiteLeft = whiteZone.AbsolutePosition.X
     local whiteRight = whiteLeft + whiteZone.AbsoluteSize.X
-    local whiteCenterX = whiteLeft + (whiteZone.AbsoluteSize.X * 0.5)
 
     local needleX = needle.AbsolutePosition.X + (needle.AbsoluteSize.X * 0.5)
-    local tol = DODGE_SETTINGS.Tolerance
 
-    if needleX < (whiteLeft - 15) or needleX > (whiteRight + 15) then
+    if needleX < (whiteLeft - 12) or needleX > (whiteRight + 12) then
         dodgeHasReset = true
     end
 
     local movingDir = 0
     if prevNeedleX ~= nil then
         local delta = needleX - prevNeedleX
-        if delta > 0.15 then
+        if delta > 0.1 then
             movingDir = 1
-        elseif delta < -0.15 then
+        elseif delta < -0.1 then
             movingDir = -1
         end
     end
 
-    local isAtCenter = math.abs(needleX - whiteCenterX) <= tol
-    local crossedCenter = false
-    if prevNeedleX ~= nil and movingDir ~= 0 then
-        if movingDir == 1 then
-            if (prevNeedleX <= whiteCenterX + 5) and (needleX >= whiteCenterX - tol) and (needleX <= whiteRight + 25) then
-                crossedCenter = true
-            end
-        elseif movingDir == -1 then
-            if (prevNeedleX >= whiteCenterX - 5) and (needleX <= whiteCenterX + tol) and (needleX >= whiteLeft - 25) then
-                crossedCenter = true
-            end
+    local shouldTrigger = false
+    if movingDir == 1 then
+        if (needleX >= whiteLeft - 2) and (needleX <= whiteRight + 35) and (prevNeedleX <= whiteRight + 5) then
+            shouldTrigger = true
+        end
+    elseif movingDir == -1 then
+        if (needleX <= whiteRight + 2) and (needleX >= whiteLeft - 35) and (prevNeedleX >= whiteLeft - 5) then
+            shouldTrigger = true
         end
     end
 
-    if dodgeHasReset and (isAtCenter or crossedCenter) then
+    if dodgeHasReset and shouldTrigger then
         dodgeHasReset = false
         lastDodgeTrigger = os.clock()
-        triggerBowClick(whiteCenterX, whiteZone.AbsolutePosition.Y + (whiteZone.AbsoluteSize.Y * 0.5))
+        triggerSpacebar()
     end
 
     prevNeedleX = needleX
