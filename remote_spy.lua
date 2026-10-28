@@ -6,6 +6,27 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 
+local function destroyAllOld()
+    local names = {"DuckBloxRemoteSpyUI", "DuckBloxRemoteSpyUI_v2", "DuckBloxCombatFinder"}
+    for _, n in ipairs(names) do
+        pcall(function()
+            if typeof(gethui) == "function" and gethui():FindFirstChild(n) then
+                gethui()[n]:Destroy()
+            end
+        end)
+        pcall(function()
+            local cg = game:GetService("CoreGui")
+            if cg:FindFirstChild(n) then cg[n]:Destroy() end
+        end)
+        pcall(function()
+            if LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild(n) then
+                LocalPlayer.PlayerGui[n]:Destroy()
+            end
+        end)
+    end
+end
+destroyAllOld()
+
 local parentGui
 if typeof(gethui) == "function" then
     parentGui = gethui()
@@ -14,10 +35,6 @@ elseif RunService:IsStudio() then
 else
     local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
     parentGui = (success and coreGui) or LocalPlayer:WaitForChild("PlayerGui")
-end
-
-if parentGui:FindFirstChild("DuckBloxRemoteSpyUI") then
-    parentGui.DuckBloxRemoteSpyUI:Destroy()
 end
 
 local function copyToClipboard(str)
@@ -30,37 +47,16 @@ local function copyToClipboard(str)
     end)
 end
 
-local function serializeVal(val, depth)
-    depth = depth or 0
-    if depth > 3 then return "..." end
-    local t = typeof(val)
-    if t == "string" then
-        return string.format("%q", val)
-    elseif t == "number" or t == "boolean" then
-        return tostring(val)
-    elseif t == "table" then
-        local parts = {}
-        for k, v in pairs(val) do
-            table.insert(parts, string.format("[%s] = %s", serializeVal(k, depth + 1), serializeVal(v, depth + 1)))
-        end
-        return "{" .. table.concat(parts, ", ") .. "}"
-    elseif t == "Instance" then
-        return val:GetFullName()
-    else
-        return string.format("<%s> %s", t, tostring(val))
-    end
-end
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DuckBloxRemoteSpyUI"
+ScreenGui.Name = "DuckBloxCombatFinder"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999999
 ScreenGui.Parent = parentGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 580, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -290, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 580, 0, 440)
+MainFrame.Position = UDim2.new(0.5, -290, 0.5, -220)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -72,8 +68,8 @@ MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(45, 50, 65)
-MainStroke.Thickness = 1.5
+MainStroke.Color = Color3.fromRGB(88, 101, 242)
+MainStroke.Thickness = 2
 MainStroke.Parent = MainFrame
 
 local TopBar = Instance.new("Frame")
@@ -96,10 +92,10 @@ TopBarMask.BorderSizePixel = 0
 TopBarMask.Parent = TopBar
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -120, 1, 0)
+Title.Size = UDim2.new(1, -50, 1, 0)
 Title.Position = UDim2.new(0, 14, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "📡 PlatformBattles RPG Explorer"
+Title.Text = "🦆 Combat & Timing Finder • PlatformBattles"
 Title.TextColor3 = Color3.fromRGB(245, 245, 250)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -125,403 +121,216 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, -20, 0, 32)
-TabBar.Position = UDim2.new(0, 10, 0, 48)
-TabBar.BackgroundTransparency = 1
-TabBar.Parent = MainFrame
+local SearchBox = Instance.new("TextBox")
+SearchBox.Name = "SearchBox"
+SearchBox.Size = UDim2.new(1, -20, 0, 34)
+SearchBox.Position = UDim2.new(0, 10, 0, 52)
+SearchBox.BackgroundColor3 = Color3.fromRGB(30, 35, 48)
+SearchBox.PlaceholderText = "🔍 Type to search (e.g. timing, bow, command, combat, blade)..."
+SearchBox.PlaceholderColor3 = Color3.fromRGB(130, 135, 155)
+SearchBox.Text = ""
+SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchBox.Font = Enum.Font.GothamBold
+SearchBox.TextSize = 13
+SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+SearchBox.ClearTextOnFocus = false
+SearchBox.ZIndex = 5
+SearchBox.Parent = MainFrame
 
-local TabListLayout = Instance.new("UIListLayout")
-TabListLayout.FillDirection = Enum.FillDirection.Horizontal
-TabListLayout.Padding = UDim.new(0, 8)
-TabListLayout.Parent = TabBar
+local SearchBoxCorner = Instance.new("UICorner")
+SearchBoxCorner.CornerRadius = UDim.new(0, 8)
+SearchBoxCorner.Parent = SearchBox
 
-local ModulesTabBtn = Instance.new("TextButton")
-ModulesTabBtn.Size = UDim2.new(0, 160, 1, 0)
-ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-ModulesTabBtn.Text = "📜 Battle Modules (0)"
-ModulesTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ModulesTabBtn.Font = Enum.Font.GothamBold
-ModulesTabBtn.TextSize = 12
-ModulesTabBtn.AutoButtonColor = false
-ModulesTabBtn.Parent = TabBar
+local SearchBoxStroke = Instance.new("UIStroke")
+SearchBoxStroke.Color = Color3.fromRGB(88, 101, 242)
+SearchBoxStroke.Thickness = 1.5
+SearchBoxStroke.Parent = SearchBox
 
-local ModulesTabCorner = Instance.new("UICorner")
-ModulesTabCorner.CornerRadius = UDim.new(0, 6)
-ModulesTabCorner.Parent = ModulesTabBtn
+local SearchBoxPad = Instance.new("UIPadding")
+SearchBoxPad.PaddingLeft = UDim.new(0, 12)
+SearchBoxPad.PaddingRight = UDim.new(0, 12)
+SearchBoxPad.Parent = SearchBox
 
-local LiveTabBtn = Instance.new("TextButton")
-LiveTabBtn.Size = UDim2.new(0, 150, 1, 0)
-LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-LiveTabBtn.Text = "📥 RPGState Logs (0)"
-LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-LiveTabBtn.Font = Enum.Font.GothamBold
-LiveTabBtn.TextSize = 12
-LiveTabBtn.AutoButtonColor = false
-LiveTabBtn.Parent = TabBar
+local QuickFilterBar = Instance.new("Frame")
+QuickFilterBar.Size = UDim2.new(1, -20, 0, 26)
+QuickFilterBar.Position = UDim2.new(0, 10, 0, 92)
+QuickFilterBar.BackgroundTransparency = 1
+QuickFilterBar.Parent = MainFrame
 
-local LiveTabCorner = Instance.new("UICorner")
-LiveTabCorner.CornerRadius = UDim.new(0, 6)
-LiveTabCorner.Parent = LiveTabBtn
+local QuickFilterLayout = Instance.new("UIListLayout")
+QuickFilterLayout.FillDirection = Enum.FillDirection.Horizontal
+QuickFilterLayout.Padding = UDim.new(0, 6)
+QuickFilterLayout.Parent = QuickFilterBar
 
-local RemotesTabBtn = Instance.new("TextButton")
-RemotesTabBtn.Size = UDim2.new(0, 120, 1, 0)
-RemotesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-RemotesTabBtn.Text = "📦 Remotes (13)"
-RemotesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-RemotesTabBtn.Font = Enum.Font.GothamBold
-RemotesTabBtn.TextSize = 12
-RemotesTabBtn.AutoButtonColor = false
-RemotesTabBtn.Parent = TabBar
+local function createFilterPill(label, filterKeyword)
+    local pill = Instance.new("TextButton")
+    pill.Size = UDim2.new(0, 0, 1, 0)
+    pill.AutomaticSize = Enum.AutomaticSize.X
+    pill.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
+    pill.Text = " " .. label .. " "
+    pill.TextColor3 = Color3.fromRGB(200, 210, 235)
+    pill.Font = Enum.Font.GothamBold
+    pill.TextSize = 11
+    pill.AutoButtonColor = false
+    pill.Parent = QuickFilterBar
 
-local RemotesTabCorner = Instance.new("UICorner")
-RemotesTabCorner.CornerRadius = UDim.new(0, 6)
-RemotesTabCorner.Parent = RemotesTabBtn
+    local pillCorner = Instance.new("UICorner")
+    pillCorner.CornerRadius = UDim.new(0, 6)
+    pillCorner.Parent = pill
 
-local ClearBtn = Instance.new("TextButton")
-ClearBtn.Size = UDim2.new(0, 60, 1, 0)
-ClearBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-ClearBtn.Text = "Clear"
-ClearBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
-ClearBtn.Font = Enum.Font.GothamBold
-ClearBtn.TextSize = 11.5
-ClearBtn.AutoButtonColor = false
-ClearBtn.Parent = TabBar
-
-local ClearCorner = Instance.new("UICorner")
-ClearCorner.CornerRadius = UDim.new(0, 6)
-ClearCorner.Parent = ClearBtn
-
-local SearchBar = Instance.new("TextBox")
-SearchBar.Size = UDim2.new(1, -20, 0, 26)
-SearchBar.Position = UDim2.new(0, 10, 0, 84)
-SearchBar.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
-SearchBar.PlaceholderText = "🔍 Search modules (e.g. command, timing, combat, bow, minigame)..."
-SearchBar.PlaceholderColor3 = Color3.fromRGB(120, 125, 145)
-SearchBar.Text = ""
-SearchBar.TextColor3 = Color3.fromRGB(240, 245, 255)
-SearchBar.Font = Enum.Font.Gotham
-SearchBar.TextSize = 12
-SearchBar.TextXAlignment = Enum.TextXAlignment.Left
-SearchBar.ClearTextOnFocus = false
-SearchBar.Parent = MainFrame
-
-local SearchCorner = Instance.new("UICorner")
-SearchCorner.CornerRadius = UDim.new(0, 6)
-SearchCorner.Parent = SearchBar
-
-local SearchPad = Instance.new("UIPadding")
-SearchPad.PaddingLeft = UDim.new(0, 10)
-SearchPad.PaddingRight = UDim.new(0, 10)
-SearchPad.Parent = SearchBar
-
-local ModulesScroll = Instance.new("ScrollingFrame")
-ModulesScroll.Size = UDim2.new(1, -20, 1, -122)
-ModulesScroll.Position = UDim2.new(0, 10, 0, 114)
-ModulesScroll.BackgroundTransparency = 1
-ModulesScroll.BorderSizePixel = 0
-ModulesScroll.ScrollBarThickness = 4
-ModulesScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
-ModulesScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ModulesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-ModulesScroll.Active = true
-ModulesScroll.Visible = true
-ModulesScroll.Parent = MainFrame
-
-SearchBar:GetPropertyChangedSignal("Text"):Connect(function()
-    local query = SearchBar.Text:lower():gsub("%s+", "")
-    for _, card in ipairs(ModulesScroll:GetChildren()) do
-        if card:IsA("Frame") then
-            if query == "" then
-                card.Visible = true
-            else
-                local name = card.Name:lower()
-                card.Visible = (name:find(query, 1, true) ~= nil)
-            end
-        end
-    end
-end)
-
-local ModulesList = Instance.new("UIListLayout")
-ModulesList.Padding = UDim.new(0, 6)
-ModulesList.SortOrder = Enum.SortOrder.LayoutOrder
-ModulesList.Parent = ModulesScroll
-
-local ModulesPadding = Instance.new("UIPadding")
-ModulesPadding.PaddingTop = UDim.new(0, 4)
-ModulesPadding.PaddingBottom = UDim.new(0, 10)
-ModulesPadding.Parent = ModulesScroll
-
-local LiveScroll = Instance.new("ScrollingFrame")
-LiveScroll.Size = UDim2.new(1, -20, 1, -114)
-LiveScroll.Position = UDim2.new(0, 10, 0, 106)
-LiveScroll.BackgroundTransparency = 1
-LiveScroll.BorderSizePixel = 0
-LiveScroll.ScrollBarThickness = 4
-LiveScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
-LiveScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LiveScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LiveScroll.Active = true
-LiveScroll.Visible = false
-LiveScroll.Parent = MainFrame
-
-local LiveList = Instance.new("UIListLayout")
-LiveList.Padding = UDim.new(0, 8)
-LiveList.SortOrder = Enum.SortOrder.LayoutOrder
-LiveList.Parent = LiveScroll
-
-local LivePadding = Instance.new("UIPadding")
-LivePadding.PaddingTop = UDim.new(0, 4)
-LivePadding.PaddingBottom = UDim.new(0, 10)
-LivePadding.Parent = LiveScroll
-
-local RemotesScroll = Instance.new("ScrollingFrame")
-RemotesScroll.Size = UDim2.new(1, -20, 1, -114)
-RemotesScroll.Position = UDim2.new(0, 10, 0, 106)
-RemotesScroll.BackgroundTransparency = 1
-RemotesScroll.BorderSizePixel = 0
-RemotesScroll.ScrollBarThickness = 4
-RemotesScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
-RemotesScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-RemotesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-RemotesScroll.Active = true
-RemotesScroll.Visible = false
-RemotesScroll.Parent = MainFrame
-
-local RemotesList = Instance.new("UIListLayout")
-RemotesList.Padding = UDim.new(0, 6)
-RemotesList.SortOrder = Enum.SortOrder.LayoutOrder
-RemotesList.Parent = RemotesScroll
-
-local RemotesPadding = Instance.new("UIPadding")
-RemotesPadding.PaddingTop = UDim.new(0, 4)
-RemotesPadding.PaddingBottom = UDim.new(0, 10)
-RemotesPadding.Parent = RemotesScroll
-
-local function selectTab(activeBtn, activeScroll)
-    ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-    ModulesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-    LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-    LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-    RemotesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-    RemotesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-
-    ModulesScroll.Visible = false
-    LiveScroll.Visible = false
-    RemotesScroll.Visible = false
-
-    activeBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-    activeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    activeScroll.Visible = true
+    pill.MouseButton1Click:Connect(function()
+        SearchBox.Text = filterKeyword
+    end)
 end
 
-ModulesTabBtn.MouseButton1Click:Connect(function()
-    selectTab(ModulesTabBtn, ModulesScroll)
-end)
+createFilterPill("🎯 All Timing/Minigames", "timing")
+createFilterPill("🏹 Bow", "bow")
+createFilterPill("⚔️ Combat/Action", "combat")
+createFilterPill("⚡ Command", "command")
+createFilterPill("🔄 Reset", "")
 
-LiveTabBtn.MouseButton1Click:Connect(function()
-    selectTab(LiveTabBtn, LiveScroll)
-end)
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Name = "ResultsScroll"
+Scroll.Size = UDim2.new(1, -20, 1, -130)
+Scroll.Position = UDim2.new(0, 10, 0, 124)
+Scroll.BackgroundTransparency = 1
+Scroll.BorderSizePixel = 0
+Scroll.ScrollBarThickness = 5
+Scroll.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.Active = true
+Scroll.Parent = MainFrame
 
-RemotesTabBtn.MouseButton1Click:Connect(function()
-    selectTab(RemotesTabBtn, RemotesScroll)
-end)
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Padding = UDim.new(0, 6)
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ListLayout.Parent = Scroll
 
-ClearBtn.MouseButton1Click:Connect(function()
-    for _, child in ipairs(LiveScroll:GetChildren()) do
-        if child:IsA("Frame") then child:Destroy() end
+local ScrollPadding = Instance.new("UIPadding")
+ScrollPadding.PaddingTop = UDim.new(0, 4)
+ScrollPadding.PaddingBottom = UDim.new(0, 12)
+ScrollPadding.Parent = Scroll
+
+local allCards = {}
+
+local function addCard(modObj)
+    local name = modObj.Name
+    local path = modObj:GetFullName()
+    local nlower = name:lower()
+
+    local isCombatOrTiming = nlower:find("timing") or nlower:find("bow") or nlower:find("minigame")
+        or nlower:find("dodge") or nlower:find("combat") or nlower:find("battle")
+        or nlower:find("command") or nlower:find("action") or nlower:find("slash")
+        or nlower:find("blade") or nlower:find("shot") or nlower:find("rpg")
+
+    local memberInfo = {}
+    local success, res = pcall(function() return require(modObj) end)
+    if success and typeof(res) == "table" then
+        for k, v in pairs(res) do
+            table.insert(memberInfo, string.format("%s (%s)", tostring(k), typeof(v)))
+        end
     end
-end)
-
-local liveCount = 0
-
-local function addLiveEntry(remoteObj, method, args)
-    liveCount = liveCount + 1
-    LiveTabBtn.Text = string.format("📥 RPGState Logs (%d)", liveCount)
-
-    local path = typeof(remoteObj) == "Instance" and remoteObj:GetFullName() or tostring(remoteObj)
-    local name = typeof(remoteObj) == "Instance" and remoteObj.Name or "Unknown"
-    local timeStr = os.date("%H:%M:%S")
-
-    local serialized = {}
-    for i, a in ipairs(args) do
-        table.insert(serialized, serializeVal(a))
-    end
-    local argsFormatted = table.concat(serialized, ", ")
-    local copyCode = string.format("%s:%s(%s)", path, method, argsFormatted)
+    local membersStr = #memberInfo > 0 and table.concat(memberInfo, ", ") or "Loaded"
 
     local card = Instance.new("Frame")
+    card.Name = name .. " " .. path .. " " .. membersStr
     card.Size = UDim2.new(1, 0, 0, 0)
     card.AutomaticSize = Enum.AutomaticSize.Y
-    card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+    card.BackgroundColor3 = isCombatOrTiming and Color3.fromRGB(34, 40, 58) or Color3.fromRGB(26, 30, 40)
     card.BorderSizePixel = 0
-    card.LayoutOrder = -liveCount
-    card.Parent = LiveScroll
+    card.LayoutOrder = isCombatOrTiming and -100 or 10
+    card.Parent = Scroll
 
     local cardCorner = Instance.new("UICorner")
     cardCorner.CornerRadius = UDim.new(0, 8)
     cardCorner.Parent = card
 
     local cardStroke = Instance.new("UIStroke")
-    cardStroke.Color = Color3.fromRGB(45, 50, 65)
-    cardStroke.Thickness = 1
+    cardStroke.Color = isCombatOrTiming and Color3.fromRGB(88, 101, 242) or Color3.fromRGB(45, 50, 65)
+    cardStroke.Thickness = isCombatOrTiming and 1.5 or 1
     cardStroke.Parent = card
 
     local cardPad = Instance.new("UIPadding")
     cardPad.PaddingTop = UDim.new(0, 8)
     cardPad.PaddingBottom = UDim.new(0, 8)
-    cardPad.PaddingLeft = UDim.new(0, 10)
-    cardPad.PaddingRight = UDim.new(0, 10)
+    cardPad.PaddingLeft = UDim.new(0, 12)
+    cardPad.PaddingRight = UDim.new(0, 12)
     cardPad.Parent = card
 
-    local head = Instance.new("Frame")
-    head.Size = UDim2.new(1, 0, 0, 24)
-    head.BackgroundTransparency = 1
-    head.Parent = card
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 22)
+    header.BackgroundTransparency = 1
+    header.Parent = card
 
+    local tagText = isCombatOrTiming and "⭐ [KEY MODULE]" or "[Module]"
+    local tagColor = isCombatOrTiming and "#2ECC71" or "#F39C12"
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Size = UDim2.new(1, -85, 1, 0)
     titleLbl.BackgroundTransparency = 1
-    titleLbl.Text = string.format("<font color=\"#5865F2\">[%s]</font> <font color=\"#3498DB\">%s</font> • %s", timeStr, method, name)
+    titleLbl.Text = string.format("<font color=\"%s\">%s</font> <b>%s</b>", tagColor, tagText, name)
     titleLbl.RichText = true
     titleLbl.TextColor3 = Color3.fromRGB(245, 245, 250)
     titleLbl.Font = Enum.Font.GothamBold
-    titleLbl.TextSize = 12.5
+    titleLbl.TextSize = 13
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-    titleLbl.Parent = head
+    titleLbl.Parent = header
 
     local copyBtn = Instance.new("TextButton")
     copyBtn.Size = UDim2.new(0, 75, 0, 22)
-    copyBtn.Position = UDim2.new(1, -75, 0, 1)
-    copyBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    copyBtn.Position = UDim2.new(1, -75, 0, 0)
+    copyBtn.BackgroundColor3 = isCombatOrTiming and Color3.fromRGB(88, 101, 242) or Color3.fromRGB(45, 50, 65)
     copyBtn.Text = "📋 Copy"
     copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     copyBtn.Font = Enum.Font.GothamBold
     copyBtn.TextSize = 11
     copyBtn.AutoButtonColor = false
-    copyBtn.Parent = head
+    copyBtn.Parent = header
 
     local copyCorner = Instance.new("UICorner")
     copyCorner.CornerRadius = UDim.new(0, 6)
     copyCorner.Parent = copyBtn
 
+    local fullCopy = string.format("local %s = require(%s)\n-- Members: %s", name, path, membersStr)
     copyBtn.MouseButton1Click:Connect(function()
-        copyToClipboard(copyCode)
+        copyToClipboard(fullCopy)
         copyBtn.Text = "✅ Copied!"
         copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
         task.wait(1.5)
         if copyBtn.Parent then
             copyBtn.Text = "📋 Copy"
-            copyBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+            copyBtn.BackgroundColor3 = isCombatOrTiming and Color3.fromRGB(88, 101, 242) or Color3.fromRGB(45, 50, 65)
         end
     end)
 
     local pathLbl = Instance.new("TextLabel")
     pathLbl.Size = UDim2.new(1, 0, 0, 16)
-    pathLbl.Position = UDim2.new(0, 0, 0, 26)
+    pathLbl.Position = UDim2.new(0, 0, 0, 24)
     pathLbl.BackgroundTransparency = 1
     pathLbl.Text = path
     pathLbl.TextColor3 = Color3.fromRGB(150, 155, 175)
     pathLbl.Font = Enum.Font.Code
-    pathLbl.TextSize = 11
+    pathLbl.TextSize = 10.5
     pathLbl.TextXAlignment = Enum.TextXAlignment.Left
     pathLbl.Parent = card
 
-    local argsBox = Instance.new("TextLabel")
-    argsBox.Size = UDim2.new(1, 0, 0, 0)
-    argsBox.Position = UDim2.new(0, 0, 0, 44)
-    argsBox.AutomaticSize = Enum.AutomaticSize.Y
-    argsBox.BackgroundTransparency = 1
-    argsBox.Text = argsFormatted ~= "" and ("Data: (" .. argsFormatted .. ")") or "(No Arguments)"
-    argsBox.TextColor3 = Color3.fromRGB(230, 235, 245)
-    argsBox.Font = Enum.Font.Code
-    argsBox.TextSize = 11.5
-    argsBox.TextXAlignment = Enum.TextXAlignment.Left
-    argsBox.TextWrapped = true
-    argsBox.Parent = card
+    local memLbl = Instance.new("TextLabel")
+    memLbl.Size = UDim2.new(1, 0, 0, 0)
+    memLbl.Position = UDim2.new(0, 0, 0, 42)
+    memLbl.AutomaticSize = Enum.AutomaticSize.Y
+    memLbl.BackgroundTransparency = 1
+    memLbl.Text = "Exports: " .. membersStr
+    memLbl.TextColor3 = Color3.fromRGB(180, 220, 255)
+    memLbl.Font = Enum.Font.Code
+    memLbl.TextSize = 11
+    memLbl.TextXAlignment = Enum.TextXAlignment.Left
+    memLbl.TextWrapped = true
+    memLbl.Parent = card
+
+    table.insert(allCards, card)
 end
 
-local function populateRemotes()
-    local targets = {}
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
-            table.insert(targets, obj)
-        end
-    end
-
-    for _, obj in ipairs(targets) do
-        local path = obj:GetFullName()
-        local name = obj.Name
-        local cName = obj.ClassName
-
-        local card = Instance.new("Frame")
-        card.Size = UDim2.new(1, 0, 0, 42)
-        card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
-        card.BorderSizePixel = 0
-        card.Parent = RemotesScroll
-
-        local cardCorner = Instance.new("UICorner")
-        cardCorner.CornerRadius = UDim.new(0, 6)
-        cardCorner.Parent = card
-
-        local cardPad = Instance.new("UIPadding")
-        cardPad.PaddingLeft = UDim.new(0, 10)
-        cardPad.PaddingRight = UDim.new(0, 10)
-        cardPad.Parent = card
-
-        local tagColor = cName:find("Function") and "#E67E22" or "#5865F2"
-        local titleLbl = Instance.new("TextLabel")
-        titleLbl.Size = UDim2.new(1, -85, 0, 20)
-        titleLbl.Position = UDim2.new(0, 0, 0, 2)
-        titleLbl.BackgroundTransparency = 1
-        titleLbl.Text = string.format("<font color=\"%s\">[%s]</font> <b>%s</b>", tagColor, cName, name)
-        titleLbl.RichText = true
-        titleLbl.TextColor3 = Color3.fromRGB(240, 240, 245)
-        titleLbl.Font = Enum.Font.GothamBold
-        titleLbl.TextSize = 12
-        titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-        titleLbl.Parent = card
-
-        local pathLbl = Instance.new("TextLabel")
-        pathLbl.Size = UDim2.new(1, -85, 0, 16)
-        pathLbl.Position = UDim2.new(0, 0, 0, 22)
-        pathLbl.BackgroundTransparency = 1
-        pathLbl.Text = path
-        pathLbl.TextColor3 = Color3.fromRGB(140, 145, 165)
-        pathLbl.Font = Enum.Font.Code
-        pathLbl.TextSize = 10.5
-        pathLbl.TextXAlignment = Enum.TextXAlignment.Left
-        pathLbl.Parent = card
-
-        local copyBtn = Instance.new("TextButton")
-        copyBtn.Size = UDim2.new(0, 75, 0, 24)
-        copyBtn.Position = UDim2.new(1, -75, 0.5, -12)
-        copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-        copyBtn.Text = "📋 Copy"
-        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        copyBtn.Font = Enum.Font.GothamBold
-        copyBtn.TextSize = 11
-        copyBtn.AutoButtonColor = false
-        copyBtn.Parent = card
-
-        local copyCorner = Instance.new("UICorner")
-        copyCorner.CornerRadius = UDim.new(0, 6)
-        copyCorner.Parent = copyBtn
-
-        copyBtn.MouseButton1Click:Connect(function()
-            copyToClipboard(path)
-            copyBtn.Text = "✅ Copied!"
-            copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-            task.wait(1.5)
-            if copyBtn.Parent then
-                copyBtn.Text = "📋 Copy"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-            end
-        end)
-    end
-end
-
-local function populateModules()
+local function scanAll()
     local modules = {}
     local pb = ReplicatedStorage:FindFirstChild("PlatformBattles")
     if pb then
@@ -535,152 +344,38 @@ local function populateModules()
     local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
     if ps then
         for _, obj in ipairs(ps:GetDescendants()) do
-            if obj:IsA("ModuleScript") and (obj.Name:lower():find("battle") or obj.Name:lower():find("combat") or obj.Name:lower():find("rpg")) then
+            if obj:IsA("ModuleScript") then
                 table.insert(modules, obj)
             end
         end
     end
 
-    local count = 0
-    for _, mod in ipairs(modules) do
-        count = count + 1
-        local path = mod:GetFullName()
-        local name = mod.Name
-
-        local memberInfo = {}
-        local success, res = pcall(function() return require(mod) end)
-        if success and typeof(res) == "table" then
-            for k, v in pairs(res) do
-                table.insert(memberInfo, string.format("%s (%s)", tostring(k), typeof(v)))
+    local pgui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
+    if pgui then
+        for _, obj in ipairs(pgui:GetDescendants()) do
+            if obj:IsA("ModuleScript") then
+                table.insert(modules, obj)
             end
         end
-
-        local membersStr = #memberInfo > 0 and table.concat(memberInfo, ", ") or "Module Loaded"
-
-        local nlower = name:lower()
-        local isPriority = nlower:find("timing") or nlower:find("bow") or nlower:find("minigame")
-            or nlower:find("dodge") or nlower:find("combat") or nlower:find("battle")
-            or nlower:find("command") or nlower:find("action") or nlower:find("slash")
-            or nlower:find("blade") or nlower:find("rpg")
-
-        local card = Instance.new("Frame")
-        card.Name = name .. "_" .. path
-        card.Size = UDim2.new(1, 0, 0, 0)
-        card.AutomaticSize = Enum.AutomaticSize.Y
-        card.BackgroundColor3 = isPriority and Color3.fromRGB(34, 40, 56) or Color3.fromRGB(28, 32, 42)
-        card.BorderSizePixel = 0
-        card.LayoutOrder = isPriority and -100 or count
-        card.Parent = ModulesScroll
-
-        local cardCorner = Instance.new("UICorner")
-        cardCorner.CornerRadius = UDim.new(0, 6)
-        cardCorner.Parent = card
-
-        local cardPad = Instance.new("UIPadding")
-        cardPad.PaddingTop = UDim.new(0, 6)
-        cardPad.PaddingBottom = UDim.new(0, 6)
-        cardPad.PaddingLeft = UDim.new(0, 10)
-        cardPad.PaddingRight = UDim.new(0, 10)
-        cardPad.Parent = card
-
-        local header = Instance.new("Frame")
-        header.Size = UDim2.new(1, 0, 0, 22)
-        header.BackgroundTransparency = 1
-        header.Parent = card
-
-        local titleLbl = Instance.new("TextLabel")
-        titleLbl.Size = UDim2.new(1, -85, 1, 0)
-        titleLbl.BackgroundTransparency = 1
-        titleLbl.Text = string.format("<font color=\"#F39C12\">[Module]</font> <b>%s</b>", name)
-        titleLbl.RichText = true
-        titleLbl.TextColor3 = Color3.fromRGB(240, 240, 245)
-        titleLbl.Font = Enum.Font.GothamBold
-        titleLbl.TextSize = 12
-        titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-        titleLbl.Parent = header
-
-        local copyBtn = Instance.new("TextButton")
-        copyBtn.Size = UDim2.new(0, 75, 0, 22)
-        copyBtn.Position = UDim2.new(1, -75, 0, 0)
-        copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-        copyBtn.Text = "📋 Copy"
-        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        copyBtn.Font = Enum.Font.GothamBold
-        copyBtn.TextSize = 11
-        copyBtn.AutoButtonColor = false
-        copyBtn.Parent = header
-
-        local copyCorner = Instance.new("UICorner")
-        copyCorner.CornerRadius = UDim.new(0, 6)
-        copyCorner.Parent = copyBtn
-
-        local fullCopy = string.format("local %s = require(%s)\n-- Members: %s", name, path, membersStr)
-        copyBtn.MouseButton1Click:Connect(function()
-            copyToClipboard(fullCopy)
-            copyBtn.Text = "✅ Copied!"
-            copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-            task.wait(1.5)
-            if copyBtn.Parent then
-                copyBtn.Text = "📋 Copy"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-            end
-        end)
-
-        local pathLbl = Instance.new("TextLabel")
-        pathLbl.Size = UDim2.new(1, 0, 0, 16)
-        pathLbl.Position = UDim2.new(0, 0, 0, 22)
-        pathLbl.BackgroundTransparency = 1
-        pathLbl.Text = path
-        pathLbl.TextColor3 = Color3.fromRGB(140, 145, 165)
-        pathLbl.Font = Enum.Font.Code
-        pathLbl.TextSize = 10.5
-        pathLbl.TextXAlignment = Enum.TextXAlignment.Left
-        pathLbl.Parent = card
-
-        local memLbl = Instance.new("TextLabel")
-        memLbl.Size = UDim2.new(1, 0, 0, 0)
-        memLbl.Position = UDim2.new(0, 0, 0, 38)
-        memLbl.AutomaticSize = Enum.AutomaticSize.Y
-        memLbl.BackgroundTransparency = 1
-        memLbl.Text = "Functions/Keys: " .. membersStr
-        memLbl.TextColor3 = Color3.fromRGB(180, 220, 255)
-        memLbl.Font = Enum.Font.Code
-        memLbl.TextSize = 11
-        memLbl.TextXAlignment = Enum.TextXAlignment.Left
-        memLbl.TextWrapped = true
-        memLbl.Parent = card
     end
 
-    ModulesTabBtn.Text = string.format("📜 Battle Modules (%d)", count)
-end
-
-populateRemotes()
-populateModules()
-
-local rpgState = ReplicatedStorage:FindFirstChild("PlatformBattles") and ReplicatedStorage.PlatformBattles:FindFirstChild("Remotes") and ReplicatedStorage.PlatformBattles.Remotes:FindFirstChild("RPGState")
-if rpgState and rpgState:IsA("RemoteEvent") then
-    pcall(function()
-        rpgState.OnClientEvent:Connect(function(...)
-            local args = {...}
-            task.spawn(function()
-                addLiveEntry(rpgState, "OnClientEvent", args)
-            end)
-        end)
-    end)
-end
-
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("RemoteEvent") and obj ~= rpgState then
-        pcall(function()
-            obj.OnClientEvent:Connect(function(...)
-                local args = {...}
-                task.spawn(function()
-                    addLiveEntry(obj, "OnClientEvent", args)
-                end)
-            end)
-        end)
+    for _, m in ipairs(modules) do
+        addCard(m)
     end
 end
+
+scanAll()
+
+SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local q = SearchBox.Text:lower():gsub("%s+", "")
+    for _, card in ipairs(allCards) do
+        if q == "" then
+            card.Visible = true
+        else
+            card.Visible = (card.Name:lower():find(q, 1, true) ~= nil)
+        end
+    end
+end)
 
 local function enableDragging(frame, handle)
     local dragging = false
