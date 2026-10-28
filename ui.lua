@@ -572,87 +572,117 @@ end
 local autoDodgeEnabled = false
 local lastDodgeTrigger = 0
 local dodgeConnection = nil
+local lastNeedlePositionsX = {}
 local prevNeedleX = nil
 local dodgeHasReset = true
 
 local DODGE_SETTINGS = {
-    Cooldown = 0.5,
-    Tolerance = 6,
+    Cooldown = 0.45,
+    Tolerance = 8,
 }
 
 local function isWhiteColor(c)
     if not c then return false end
-    return (c.R > 0.88) and (c.G > 0.88) and (c.B > 0.88)
+    return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
 end
 
-local function isRedColor(c)
-    if not c then return false end
-    return (c.R > 0.7) and (c.G < 0.45) and (c.B < 0.45)
+-- ค้นหา ScreenGui หรือ Container หลักของ Incoming! / Dodge
+local function findDodgeContainer()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil end
+
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            for _, label in ipairs(gui:GetDescendants()) do
+                if label:IsA("TextLabel") and label.Visible then
+                    local text = label.Text:upper()
+                    if text:find("INCOMING") or text:find("DODGE") or text:find("YOUR SHIELD") then
+                        return gui -- คืนค่าทั้ง ScreenGui เพื่อให้หาชิ้นส่วนในหน้าต่างเจอครบแน่นอน 100%
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- ค้นหาเข็มสีแดงที่กำลังขยับแนวนอนจริง (Horizontal Motion Tracking)
+local function getMovingNeedle(container)
+    local bestObj = nil
+    local maxMoveX = 0
+
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 8 then
+            local prevX = lastNeedlePositionsX[obj]
+            local curX = obj.AbsolutePosition.X
+            if prevX ~= nil then
+                local deltaX = math.abs(prevX - curX)
+                if deltaX > 0.2 and deltaX > maxMoveX then
+                    maxMoveX = deltaX
+                    bestObj = obj
+                end
+            end
+            lastNeedlePositionsX[obj] = curX
+        end
+    end
+
+    -- Fallback ถ้ายังไม่เริ่มขยับ ให้หาตามชื่อเข็ม
+    if not bestObj then
+        for _, obj in ipairs(container:GetDescendants()) do
+            if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 10 and obj.AbsoluteSize.X < 25 then
+                local name = obj.Name:lower()
+                if name:find("needle") or name:find("pointer") or name:find("line") or name:find("cursor") then
+                    return obj
+                end
+            end
+        end
+    end
+
+    return bestObj
+end
+
+-- ค้นหาแถบสีขาวจริง (White Zone) ในระดับความสูงเดียวกับเข็ม (กรอง TextLabel ทิ้ง)
+local function findWhiteDodgeZone(container, needle)
+    local needleY = needle.AbsolutePosition.Y
+
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj ~= needle then
+            -- ต้องเป็นวัตถุที่มีสีทึบ (BackgroundTransparency < 0.6) ป้องกันการจับโดน TextLabel โปร่งใส
+            if obj.AbsoluteSize.X > 5 and obj.BackgroundTransparency < 0.6 then
+                -- ต้องอยู่ในระดับความสูงเดียวกับเข็ม (ห่างกันไม่เกิน 40 พิกเซล)
+                if math.abs(obj.AbsolutePosition.Y - needleY) < 40 then
+                    local name = obj.Name:lower()
+                    if name:find("white") or name:find("dodge") or name:find("sweet") or name:find("target") then
+                        return obj
+                    end
+                    if isWhiteColor(obj.BackgroundColor3) then
+                        return obj
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
 end
 
 local function scanAndTriggerDodge()
     if not autoDodgeEnabled then return end
     if (os.clock() - lastDodgeTrigger) < DODGE_SETTINGS.Cooldown then return end
 
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return end
-
-    -- ค้นหา Container มินิเกม Incoming / Dodge
-    local activeContainer = nil
-    for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Enabled then
-            for _, label in ipairs(gui:GetDescendants()) do
-                if label:IsA("TextLabel") and label.Visible then
-                    local text = label.Text:upper()
-                    if text:find("INCOMING") or text:find("DODGE") or text:find("HITS YOUR SHIELD") then
-                        activeContainer = label:FindFirstAncestorOfClass("Frame") or label.Parent or gui
-                        break
-                    end
-                end
-            end
-            if activeContainer then break end
-        end
-    end
-
-    if not activeContainer then
+    local container = findDodgeContainer()
+    if not container then
         dodgeHasReset = true
         prevNeedleX = nil
+        lastNeedlePositionsX = {}
         return
     end
 
-    -- ค้นหา White Zone (แถบสีขาวสำหรับ Dodge)
-    local whiteZone = nil
-    for _, obj in ipairs(activeContainer:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.X > 5 then
-            local name = obj.Name:lower()
-            if name:find("white") or name:find("dodge") or name:find("sweet") or name:find("target") then
-                whiteZone = obj
-                break
-            end
-            if isWhiteColor(obj.BackgroundColor3) then
-                whiteZone = obj
-                break
-            end
-        end
-    end
+    local needle = getMovingNeedle(container)
+    if not needle then return end
 
-    -- ค้นหา Red Needle (เข็มสีแดงที่เลื่อนซ้าย/ขวา)
-    local needle = nil
-    for _, obj in ipairs(activeContainer:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 10 then
-            local name = obj.Name:lower()
-            if name:find("needle") or name:find("line") or name:find("pointer") or name:find("red") or name:find("cursor") then
-                needle = obj
-                break
-            end
-            if isRedColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isRedColor(obj.ImageColor3)) then
-                needle = obj
-                break
-            end
-        end
-    end
-
-    if not whiteZone or not needle then return end
+    local whiteZone = findWhiteDodgeZone(container, needle)
+    if not whiteZone then return end
 
     -- พิกัดแนวนอน (X-Axis) ของ White Zone
     local whiteLeft = whiteZone.AbsolutePosition.X
@@ -664,7 +694,7 @@ local function scanAndTriggerDodge()
     local tol = DODGE_SETTINGS.Tolerance
 
     -- ตรวจสอบว่าเข็มอยู่นอกโซนสีขาวหรือไม่ (เพื่อรีเซ็ตเตรียมกดรอบใหม่)
-    if needleX < (whiteLeft - 20) or needleX > (whiteRight + 20) then
+    if needleX < (whiteLeft - 15) or needleX > (whiteRight + 15) then
         dodgeHasReset = true
     end
 
@@ -680,23 +710,23 @@ local function scanAndTriggerDodge()
     end
 
     -- ตรวจจับว่าเข็มเข้าสู่ White Zone หรือข้ามจุดกึ่งกลาง (รองรับแม้เกิด Lag)
-    local inWhiteZone = (needleX >= (whiteLeft - tol)) and (needleX <= (whiteRight + tol))
+    local isAtCenter = math.abs(needleX - whiteCenterX) <= tol
     local crossedCenter = false
     if prevNeedleX ~= nil and movingDir ~= 0 then
         if movingDir == 1 then
             -- เลื่อนจากซ้ายไปขวา: ข้าม whiteCenterX
-            if prevNeedleX <= (whiteCenterX + 5) and needleX >= (whiteCenterX - tol) and needleX <= (whiteRight + 25) then
+            if (prevNeedleX <= whiteCenterX + 5) and (needleX >= whiteCenterX - tol) and (needleX <= whiteRight + 25) then
                 crossedCenter = true
             end
         elseif movingDir == -1 then
             -- เลื่อนจากขวาไปซ้าย: ข้าม whiteCenterX
-            if prevNeedleX >= (whiteCenterX - 5) and needleX <= (whiteCenterX + tol) and needleX >= (whiteLeft - 25) then
+            if (prevNeedleX >= whiteCenterX - 5) and (needleX <= whiteCenterX + tol) and (needleX >= whiteLeft - 25) then
                 crossedCenter = true
             end
         end
     end
 
-    if dodgeHasReset and (inWhiteZone or crossedCenter) then
+    if dodgeHasReset and (isAtCenter or crossedCenter) then
         dodgeHasReset = false
         lastDodgeTrigger = os.clock()
         triggerBowClick(whiteCenterX, whiteZone.AbsolutePosition.Y + (whiteZone.AbsoluteSize.Y * 0.5))

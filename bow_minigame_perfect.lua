@@ -269,9 +269,159 @@ local function checkPowerShotAlignment()
 end
 
 -- ========================================================
+-- 🛡️ Auto Dodge Logic (Incoming! - White Zone)
+-- ========================================================
+local lastDodgeTrigger = 0
+local lastNeedlePositionsX = {}
+local prevNeedleX = nil
+local dodgeHasReset = true
+
+local function isWhiteColor(c)
+    if not c then return false end
+    return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
+end
+
+local function findDodgeContainer()
+    for _, gui in ipairs(PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            for _, label in ipairs(gui:GetDescendants()) do
+                if label:IsA("TextLabel") and label.Visible then
+                    local text = label.Text:upper()
+                    if text:find("INCOMING") or text:find("DODGE") or text:find("YOUR SHIELD") then
+                        return gui
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function getMovingNeedle(container)
+    local bestObj = nil
+    local maxMoveX = 0
+
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 8 then
+            local prevX = lastNeedlePositionsX[obj]
+            local curX = obj.AbsolutePosition.X
+            if prevX ~= nil then
+                local deltaX = math.abs(prevX - curX)
+                if deltaX > 0.2 and deltaX > maxMoveX then
+                    maxMoveX = deltaX
+                    bestObj = obj
+                end
+            end
+            lastNeedlePositionsX[obj] = curX
+        end
+    end
+
+    if not bestObj then
+        for _, obj in ipairs(container:GetDescendants()) do
+            if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 10 and obj.AbsoluteSize.X < 25 then
+                local name = obj.Name:lower()
+                if name:find("needle") or name:find("pointer") or name:find("line") or name:find("cursor") then
+                    return obj
+                end
+            end
+        end
+    end
+
+    return bestObj
+end
+
+local function findWhiteDodgeZone(container, needle)
+    local needleY = needle.AbsolutePosition.Y
+
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj ~= needle then
+            if obj.AbsoluteSize.X > 5 and obj.BackgroundTransparency < 0.6 then
+                if math.abs(obj.AbsolutePosition.Y - needleY) < 40 then
+                    local name = obj.Name:lower()
+                    if name:find("white") or name:find("dodge") or name:find("sweet") or name:find("target") then
+                        return obj
+                    end
+                    if isWhiteColor(obj.BackgroundColor3) then
+                        return obj
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+local function checkDodgeAlignment()
+    if not CONFIG.Enabled then return end
+    if (os.clock() - lastDodgeTrigger) < 0.45 then return end
+
+    local container = findDodgeContainer()
+    if not container then
+        dodgeHasReset = true
+        prevNeedleX = nil
+        lastNeedlePositionsX = {}
+        return
+    end
+
+    local needle = getMovingNeedle(container)
+    if not needle then return end
+
+    local whiteZone = findWhiteDodgeZone(container, needle)
+    if not whiteZone then return end
+
+    local whiteLeft = whiteZone.AbsolutePosition.X
+    local whiteRight = whiteLeft + whiteZone.AbsoluteSize.X
+    local whiteCenterX = whiteLeft + (whiteZone.AbsoluteSize.X * 0.5)
+
+    local needleX = needle.AbsolutePosition.X + (needle.AbsoluteSize.X * 0.5)
+    local tol = 8
+
+    if needleX < (whiteLeft - 15) or needleX > (whiteRight + 15) then
+        dodgeHasReset = true
+    end
+
+    local movingDir = 0
+    if prevNeedleX ~= nil then
+        local delta = needleX - prevNeedleX
+        if delta > 0.15 then
+            movingDir = 1
+        elseif delta < -0.15 then
+            movingDir = -1
+        end
+    end
+
+    local isAtCenter = math.abs(needleX - whiteCenterX) <= tol
+    local crossedCenter = false
+    if prevNeedleX ~= nil and movingDir ~= 0 then
+        if movingDir == 1 then
+            if (prevNeedleX <= whiteCenterX + 5) and (needleX >= whiteCenterX - tol) and (needleX <= whiteRight + 25) then
+                crossedCenter = true
+            end
+        elseif movingDir == -1 then
+            if (prevNeedleX >= whiteCenterX - 5) and (needleX <= whiteCenterX + tol) and (needleX >= whiteLeft - 25) then
+                crossedCenter = true
+            end
+        end
+    end
+
+    if dodgeHasReset and (isAtCenter or crossedCenter) then
+        dodgeHasReset = false
+        lastDodgeTrigger = os.clock()
+        triggerPerfectHit(Vector2.new(whiteCenterX, whiteZone.AbsolutePosition.Y + (whiteZone.AbsoluteSize.Y * 0.5)))
+        notify("🛡️ DODGE!", string.format("Perfect Dodge สำเร็จ (X: %.1f / White: %.1f)", needleX, whiteCenterX))
+    end
+
+    prevNeedleX = needleX
+end
+
+-- ========================================================
 -- 🔄 Listeners
 -- ========================================================
-RunService.RenderStepped:Connect(checkPowerShotAlignment)
+RunService.RenderStepped:Connect(function()
+    checkPowerShotAlignment()
+    checkDodgeAlignment()
+end)
 
 -- ปุ่มลัด Toggle เปิด/ปิด
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -279,8 +429,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == CONFIG.ToggleKey then
         CONFIG.Enabled = not CONFIG.Enabled
         local status = CONFIG.Enabled and "เปิดใช้งาน (ENABLED)" or "ปิดใช้งาน (DISABLED)"
-        notify("Auto Power Shot", "ระบบ: " .. status)
+        notify("Auto Bow & Dodge", "ระบบ: " .. status)
     end
 end)
 
-notify("🏹 Power Shot Loaded", "เล็งกึ่งกลางแถบทอง (Perfect Center) กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิด")
+notify("🏹 Minigame Assistant Loaded", "Auto Bow & Auto Dodge พร้อมทำงาน (กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิด)")
