@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local ContextActionService = game:GetService("ContextActionService")
 
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
@@ -82,6 +83,7 @@ local function cleanupAll()
     if parentGui and parentGui:FindFirstChild("DuckBloxHardwareCursor") then
         parentGui.DuckBloxHardwareCursor:Destroy()
     end
+    pcall(function() ContextActionService:UnbindAction("DuckBloxInputLock") end)
 end
 
 globalEnv.DuckBloxCleanup = cleanupAll
@@ -145,8 +147,8 @@ BubbleStroke.Parent = ToggleBubble
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 340, 0, 305)
-MainFrame.Position = UDim2.new(0.5, -170, 0.5, -152)
+MainFrame.Size = UDim2.new(0, 340, 0, 355)
+MainFrame.Position = UDim2.new(0.5, -170, 0.5, -177)
 MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -367,12 +369,58 @@ local dodgeCache = {
 local activeDefenseClient = nil
 local activeQTE = nil
 
+local inputLockEnabled = true
+local isAutomatedInput = false
+
+local function isMouseOverGui(frame)
+    if not frame or not frame.Visible then return false end
+    local m = UserInputService:GetMouseLocation()
+    local p = frame.AbsolutePosition
+    local s = frame.AbsoluteSize
+    return (m.X >= p.X and m.X <= (p.X + s.X) and m.Y >= p.Y and m.Y <= (p.Y + s.Y))
+end
+
+local function handleInputLock(actionName, inputState, inputObject)
+    if isAutomatedInput then
+        return Enum.ContextActionResult.Pass
+    end
+
+    if not inputLockEnabled then
+        return Enum.ContextActionResult.Pass
+    end
+
+    if inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+        if isMouseOverGui(MainFrame) or isMouseOverGui(ToggleBubble) then
+            return Enum.ContextActionResult.Pass
+        end
+    end
+
+    if bowCache.active or dodgeCache.active then
+        return Enum.ContextActionResult.Sink
+    end
+
+    return Enum.ContextActionResult.Pass
+end
+
+pcall(function()
+    ContextActionService:BindActionAtPriority(
+        "DuckBloxInputLock",
+        handleInputLock,
+        false,
+        10000,
+        Enum.KeyCode.Space,
+        Enum.UserInputType.MouseButton1
+    )
+end)
+
 local function triggerSpacebar()
     task.spawn(function()
         pcall(function()
+            isAutomatedInput = true
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
             task.wait(0.02)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            isAutomatedInput = false
         end)
     end)
 end
@@ -967,9 +1015,11 @@ local function triggerGuiObject(obj)
         local centerX = pos.X + (size.X * 0.5)
         local centerY = pos.Y + (size.Y * 0.5)
         pcall(function()
+            isAutomatedInput = true
             VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
             task.wait(0.015)
             VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
+            isAutomatedInput = false
         end)
     end
 
@@ -1352,6 +1402,14 @@ createToggle(
     end
 )
 
+createToggle(
+    "🔒 Lock Input in Minigame (Space & Click)",
+    true,
+    function(state)
+        inputLockEnabled = state
+    end
+)
+
 local function enableSmoothDrag(frame, dragHandle)
     local dragging = false
     local dragInput, dragStart, startPos
@@ -1397,13 +1455,13 @@ local function toggleUI()
     isWindowVisible = not isWindowVisible
     if isWindowVisible then
         MainFrame.Visible = true
-        MainFrame.Size = UDim2.new(0, 310, 0, 275)
+        MainFrame.Size = UDim2.new(0, 310, 0, 320)
         TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 340, 0, 305)
+            Size = UDim2.new(0, 340, 0, 355)
         }):Play()
     else
         local shrinkTween = TweenService:Create(MainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 310, 0, 275)
+            Size = UDim2.new(0, 310, 0, 320)
         })
         shrinkTween:Play()
         shrinkTween.Completed:Wait()

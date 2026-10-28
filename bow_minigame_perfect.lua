@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local ContextActionService = game:GetService("ContextActionService")
 
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
@@ -25,6 +26,7 @@ local CONFIG = {
     ClickCooldown = 0.4,
     TargetOffsetY = -2,
     Notification = true,
+    LockInput = true,
 }
 
 local isRunning = true
@@ -41,6 +43,7 @@ local function cleanup()
         pcall(function() task.cancel(thread) end)
     end
     table.clear(activeThreads)
+    pcall(function() ContextActionService:UnbindAction("DuckBloxBowInputLock") end)
 end
 
 globalEnv.DuckBloxMinigameCleanup = cleanup
@@ -70,12 +73,43 @@ local dodgeCache = {
 local activeDefenseClient = nil
 local activeQTE = nil
 
+local isAutomatedInput = false
+
+local function handleInputLock(actionName, inputState, inputObject)
+    if isAutomatedInput then
+        return Enum.ContextActionResult.Pass
+    end
+
+    if not CONFIG.LockInput or not CONFIG.Enabled then
+        return Enum.ContextActionResult.Pass
+    end
+
+    if bowCache.active or dodgeCache.active then
+        return Enum.ContextActionResult.Sink
+    end
+
+    return Enum.ContextActionResult.Pass
+end
+
+pcall(function()
+    ContextActionService:BindActionAtPriority(
+        "DuckBloxBowInputLock",
+        handleInputLock,
+        false,
+        10000,
+        Enum.KeyCode.Space,
+        Enum.UserInputType.MouseButton1
+    )
+end)
+
 local function triggerPerfectHit()
     task.spawn(function()
         pcall(function()
+            isAutomatedInput = true
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
             task.wait(0.02)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            isAutomatedInput = false
         end)
     end)
 end
