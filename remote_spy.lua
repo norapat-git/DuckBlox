@@ -192,20 +192,32 @@ local ClearCorner = Instance.new("UICorner")
 ClearCorner.CornerRadius = UDim.new(0, 6)
 ClearCorner.Parent = ClearBtn
 
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 0, 20)
-StatusLabel.Position = UDim2.new(0, 10, 0, 84)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "PlatformBattles Connected • Listening to RPGState"
-StatusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
-StatusLabel.Font = Enum.Font.Code
-StatusLabel.TextSize = 11
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.Parent = MainFrame
+local SearchBar = Instance.new("TextBox")
+SearchBar.Size = UDim2.new(1, -20, 0, 26)
+SearchBar.Position = UDim2.new(0, 10, 0, 84)
+SearchBar.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+SearchBar.PlaceholderText = "🔍 Search modules (e.g. command, timing, combat, bow, minigame)..."
+SearchBar.PlaceholderColor3 = Color3.fromRGB(120, 125, 145)
+SearchBar.Text = ""
+SearchBar.TextColor3 = Color3.fromRGB(240, 245, 255)
+SearchBar.Font = Enum.Font.Gotham
+SearchBar.TextSize = 12
+SearchBar.TextXAlignment = Enum.TextXAlignment.Left
+SearchBar.ClearTextOnFocus = false
+SearchBar.Parent = MainFrame
+
+local SearchCorner = Instance.new("UICorner")
+SearchCorner.CornerRadius = UDim.new(0, 6)
+SearchCorner.Parent = SearchBar
+
+local SearchPad = Instance.new("UIPadding")
+SearchPad.PaddingLeft = UDim.new(0, 10)
+SearchPad.PaddingRight = UDim.new(0, 10)
+SearchPad.Parent = SearchBar
 
 local ModulesScroll = Instance.new("ScrollingFrame")
-ModulesScroll.Size = UDim2.new(1, -20, 1, -114)
-ModulesScroll.Position = UDim2.new(0, 10, 0, 106)
+ModulesScroll.Size = UDim2.new(1, -20, 1, -122)
+ModulesScroll.Position = UDim2.new(0, 10, 0, 114)
 ModulesScroll.BackgroundTransparency = 1
 ModulesScroll.BorderSizePixel = 0
 ModulesScroll.ScrollBarThickness = 4
@@ -215,6 +227,20 @@ ModulesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 ModulesScroll.Active = true
 ModulesScroll.Visible = true
 ModulesScroll.Parent = MainFrame
+
+SearchBar:GetPropertyChangedSignal("Text"):Connect(function()
+    local query = SearchBar.Text:lower():gsub("%s+", "")
+    for _, card in ipairs(ModulesScroll:GetChildren()) do
+        if card:IsA("Frame") then
+            if query == "" then
+                card.Visible = true
+            else
+                local name = card.Name:lower()
+                card.Visible = (name:find(query, 1, true) ~= nil)
+            end
+        end
+    end
+end)
 
 local ModulesList = Instance.new("UIListLayout")
 ModulesList.Padding = UDim.new(0, 6)
@@ -531,11 +557,19 @@ local function populateModules()
 
         local membersStr = #memberInfo > 0 and table.concat(memberInfo, ", ") or "Module Loaded"
 
+        local nlower = name:lower()
+        local isPriority = nlower:find("timing") or nlower:find("bow") or nlower:find("minigame")
+            or nlower:find("dodge") or nlower:find("combat") or nlower:find("battle")
+            or nlower:find("command") or nlower:find("action") or nlower:find("slash")
+            or nlower:find("blade") or nlower:find("rpg")
+
         local card = Instance.new("Frame")
+        card.Name = name .. "_" .. path
         card.Size = UDim2.new(1, 0, 0, 0)
         card.AutomaticSize = Enum.AutomaticSize.Y
-        card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+        card.BackgroundColor3 = isPriority and Color3.fromRGB(34, 40, 56) or Color3.fromRGB(28, 32, 42)
         card.BorderSizePixel = 0
+        card.LayoutOrder = isPriority and -100 or count
         card.Parent = ModulesScroll
 
         local cardCorner = Instance.new("UICorner")
