@@ -1,4 +1,4 @@
-﻿local Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -6,24 +6,55 @@ local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+    pcall(function()
+        Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    end)
+    LocalPlayer = Players.LocalPlayer
+end
 
 local globalEnv = (typeof(getgenv) == "function" and getgenv()) or _G
 if globalEnv.DuckBloxCleanup then
     pcall(globalEnv.DuckBloxCleanup)
 end
 
-local parentGui
-if typeof(gethui) == "function" then
-    parentGui = gethui()
-elseif RunService:IsStudio() then
-    parentGui = LocalPlayer:WaitForChild("PlayerGui")
-else
-    local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
-    parentGui = (success and coreGui) or LocalPlayer:WaitForChild("PlayerGui")
+local function getSafeParent()
+    if typeof(gethui) == "function" then
+        local success, hui = pcall(gethui)
+        if success and hui then
+            return hui
+        end
+    end
+    local successCore, coreGui = pcall(function() return game:GetService("CoreGui") end)
+    if successCore and coreGui then
+        local canParent = pcall(function()
+            local probe = Instance.new("Folder")
+            probe.Parent = coreGui
+            probe:Destroy()
+        end)
+        if canParent then
+            return coreGui
+        end
+    end
+    return LocalPlayer:WaitForChild("PlayerGui")
 end
 
-if parentGui:FindFirstChild("DuckBloxCustomUI") then
-    parentGui.DuckBloxCustomUI:Destroy()
+local parentGui = getSafeParent()
+
+local function safeParent(inst)
+    local ok = pcall(function()
+        inst.Parent = parentGui
+    end)
+    if not ok then
+        parentGui = LocalPlayer:WaitForChild("PlayerGui")
+        pcall(function()
+            inst.Parent = parentGui
+        end)
+    end
+end
+
+if parentGui and parentGui:FindFirstChild("DuckBloxCustomUI") then
+    pcall(function() parentGui.DuckBloxCustomUI:Destroy() end)
 end
 
 local activeConnections = {}
@@ -72,14 +103,14 @@ CursorGui.Name = "DuckBloxHardwareCursor"
 CursorGui.DisplayOrder = 999999999
 CursorGui.IgnoreGuiInset = true
 CursorGui.ResetOnSpawn = false
-CursorGui.Parent = parentGui
+safeParent(CursorGui)
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DuckBloxCustomUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder = 999999
-ScreenGui.Parent = parentGui
+safeParent(ScreenGui)
 
 local VirtualCursor = Instance.new("ImageLabel")
 VirtualCursor.Name = "DuckBloxVirtualCursor"
@@ -506,7 +537,13 @@ local function initGameFrameworkHooks()
         end
     end)
 end
-initGameFrameworkHooks()
+task.spawn(function()
+    for attempt = 1, 10 do
+        if not isRunning then break end
+        pcall(initGameFrameworkHooks)
+        task.wait(1)
+    end
+end)
 
 local function isActuallyVisible(obj)
     if not obj or not obj.Parent or not obj:IsA("GuiObject") then return false end
@@ -1409,3 +1446,11 @@ trackConnection(RunService.RenderStepped:Connect(function()
         VirtualCursor.Visible = false
     end
 end))
+
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "DuckBlox Hub",
+        Text = "Loaded successfully! (Toggle: [Right Ctrl] or [V])",
+        Duration = 3,
+    })
+end)

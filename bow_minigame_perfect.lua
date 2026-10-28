@@ -4,6 +4,12 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+    pcall(function()
+        Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    end)
+    LocalPlayer = Players.LocalPlayer
+end
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local globalEnv = (typeof(getgenv) == "function" and getgenv()) or _G
@@ -234,7 +240,13 @@ local function initGameFrameworkHooks()
         end
     end)
 end
-initGameFrameworkHooks()
+task.spawn(function()
+    for attempt = 1, 10 do
+        if not isRunning then break end
+        pcall(initGameFrameworkHooks)
+        task.wait(1)
+    end
+end)
 
 local function notify(title, text)
     if not CONFIG.Notification then return end
@@ -247,15 +259,7 @@ local function notify(title, text)
     end)
 end
 
-local function triggerPerfectHit()
-    task.spawn(function()
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-            task.wait(0.02)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-        end)
-    end)
-end
+
 
 local function isActuallyVisible(obj)
     if not obj or not obj.Parent or not obj:IsA("GuiObject") then return false end
