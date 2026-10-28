@@ -306,7 +306,7 @@ local function addCard(modObj)
     copyCorner.CornerRadius = UDim.new(0, 6)
     copyCorner.Parent = copyBtn
 
-    local fullCopy = string.format("local %s = require(%s)\n-- Members: %s", name, path, membersStr)
+    local fullCopy = string.format("local %s = require(%s)\nMembers: %s", name, path, membersStr)
     copyBtn.MouseButton1Click:Connect(function()
         copyToClipboard(fullCopy)
         copyBtn.Text = "✅ Copied!"

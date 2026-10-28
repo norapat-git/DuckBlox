@@ -1,0 +1,46 @@
+local CombatReactionClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatReactionClient)
+-- Members: PlayHeldItemTransition (function), _updateTauntMarkers (function), _retireTrack (function), _destroySylph (function), StopBattleStance (function), PlayWarriorAttack (function), PlaySlimeBall (function), _ensureBattleStance (function), PlayDaggerThrowAnimation (function), PlayWarriorQTEFailure (function), _playPouchDraw (function), Clear (function), PlayTimedBlock (function), EnsureBattleStance (function), StartBattleStance (function), PlayWarriorSkill (function), PlayDaggerThrow (function), SetBattle (function), ShowDamageIndicator (function), PlayMeditate (function), PlayAngelicBlessing (function), PlayWarriorPosePreview (function), _stopHeldItemPose (function), _finishTransientTrack (function), PlayDaggerAttack (function), _summonSylph (function), __index (table), new (function), Destroy (function), PlayUnarmedAttack (function), _playBasicAttack (function), EnsureWarriorGuard (function), PlayHit (function), PlayDodge (function), StartSatchel (function), _updateSylphs (function), StopWarriorGuard (function), _recoverDaggerThrow (function), PlayUnarmedImpact (function), StartWarriorGuard (function), StopSatchel (function), IsBattleStancePlaying (function), PlaySylphSupport (function), PlayStatusApplied (function)
+
+local CombatAudience = require(ReplicatedStorage.PlatformBattles.Shared.CombatAudience)
+-- Members: Radius (number), CanObserve (function), IsUserId (function)
+
+local CombatRecovery = require(ReplicatedStorage.PlatformBattles.Shared.CombatRecovery)
+-- Members: FoeFraction (function), Health (function), Checkpoint (function), HeroFraction (function), Apply (function)
+
+local CombatDamageRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatDamageRules)
+-- Members: HitBudget (function), Mitigated (function), HeroHitCap (function)
+
+local CombatFeelRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatFeelRules)
+-- Members: ImpactDelay (function), Colors (table), Kick (function), Style (function), Impact (function)
+
+local GearCombatBudget = require(ReplicatedStorage.PlatformBattles.Shared.GearCombatBudget)
+-- Members: PinCooldown (number), KillEnergy (number), TurnHealing (number), ActionHealing (number), ControlAvailable (function), EnergyRefund (number), Healing (function), PassiveHealing (function), BeginActorTurn (function), Turn (function), PassiveRecovery (function), PassiveAction (number), Energy (function), PassiveTurn (number)
+
+local PetCombatRules = require(ReplicatedStorage.PlatformBattles.Shared.PetCombatRules)
+-- Members: Fortify (function), BeginRound (function)
+
+local CombatReactionClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatReactionClient)
+-- Members: PlayHeldItemTransition (function), _updateTauntMarkers (function), _retireTrack (function), _destroySylph (function), StopBattleStance (function), PlayWarriorAttack (function), PlaySlimeBall (function), _ensureBattleStance (function), PlayDaggerThrowAnimation (function), PlayWarriorQTEFailure (function), _playPouchDraw (function), Clear (function), PlayTimedBlock (function), EnsureBattleStance (function), StartBattleStance (function), PlayWarriorSkill (function), PlayDaggerThrow (function), SetBattle (function), ShowDamageIndicator (function), PlayMeditate (function), PlayAngelicBlessing (function), PlayWarriorPosePreview (function), _stopHeldItemPose (function), _finishTransientTrack (function), PlayDaggerAttack (function), _summonSylph (function), __index (table), new (function), Destroy (function), PlayUnarmedAttack (function), _playBasicAttack (function), EnsureWarriorGuard (function), PlayHit (function), PlayDodge (function), StartSatchel (function), _updateSylphs (function), StopWarriorGuard (function), _recoverDaggerThrow (function), PlayUnarmedImpact (function), StartWarriorGuard (function), StopSatchel (function), IsBattleStancePlaying (function), PlaySylphSupport (function), PlayStatusApplied (function)
+
+
+local DefenseTiming = require(ReplicatedStorage.PlatformBattles.Shared.DefenseTiming)
+-- Members: BarrageDefinition (function), Eligible (function), FocusMaximum (number), FocusTimePerPoint (number), BarrageJitter (number), SpeedEaseHalf (number), MaxLatencyCredit (number), Good (number), BarrageBase (number), Grace (number), MinHeavyPerfect (number), BarragePerStrike (number), Definition (function), MinGood (number), BarrageFirst (number), MinPerfect (number), StreakShrink (number), BarrageMaxPresses (number), LeadIn (number), SpeedEase (function), Window (function), FocusEase (function), StreakFloor (number), StreakMax (number), BlockMultiplier (number), Damage (function), Perfect (number), BarrageOutcome (function), BarrageFinish (function), BarragePress (function), BarragePressure (number), Submit (function), StreakGoodShrink (number), BarrageLast (number), HeavyDodgeScale (number), Grade (function), StreakGoodFloor (number), PressTime (function), LiveEligible (function), Duration (number), FocusWindowPerPoint (number), SpeedEaseMax (number), StreakSpeed (number), HitOutcome (function), Position (function)
+
+local DefenseTimingVisual = require(ReplicatedStorage.PlatformBattles.Shared.DefenseTimingVisual)
+-- Members: Radius (function), MinimumRadius (number), TargetRadius (number), Travel (number), Window (function)
+
+local DefenseTimingClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DefenseTimingClient)
+-- Members: Destroy (function), Cancel (function), _refreshHint (function), Start (function), Press (function), _setRing (function), Resolve (function), __index (table), new (function)
+
+local ArcaneTimingVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ArcaneTimingVisual)
+-- Members: Phase (function), Diameter (function)
+
+local DodgeRules = require(ReplicatedStorage.PlatformBattles.Shared.DodgeRules)
+-- Members: Raw (function), SpeedPerCapPoint (number), FullAnimation (function), MaximumReduction (number), MaximumWithSpeed (number), Roll (function), Cap (function), Chances (function), OverflowReduction (number), MaximumAutomatic (number), PlayerStat (function), OverflowDamageReduction (function)
+
+
+
+
+
+
+

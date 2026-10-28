@@ -61,6 +61,58 @@ local dodgeCache = {
     whiteZone = nil,
 }
 
+local activeDefenseClient = nil
+local function initDefenseHook()
+    pcall(function()
+        local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
+        local pbc = ps and ps:FindFirstChild("PlatformBattlesClient")
+        local dtcMod = pbc and pbc:FindFirstChild("DefenseTimingClient")
+        if dtcMod then
+            local DTC = require(dtcMod)
+            if typeof(DTC) == "table" then
+                if typeof(DTC.new) == "function" and not DTC._duckbloxHooked then
+                    DTC._duckbloxHooked = true
+                    local rawNew = DTC.new
+                    DTC.new = function(...)
+                        local inst = rawNew(...)
+                        activeDefenseClient = inst
+                        return inst
+                    end
+                end
+                if typeof(DTC.Start) == "function" and not DTC._duckbloxStartHooked then
+                    DTC._duckbloxStartHooked = true
+                    local rawStart = DTC.Start
+                    DTC.Start = function(self, ...)
+                        activeDefenseClient = self
+                        return rawStart(self, ...)
+                    end
+                end
+                if typeof(DTC.Resolve) == "function" and not DTC._duckbloxResolveHooked then
+                    DTC._duckbloxResolveHooked = true
+                    local rawResolve = DTC.Resolve
+                    DTC.Resolve = function(self, ...)
+                        if activeDefenseClient == self then
+                            activeDefenseClient = nil
+                        end
+                        return rawResolve(self, ...)
+                    end
+                end
+                if typeof(DTC.Destroy) == "function" and not DTC._duckbloxDestroyHooked then
+                    DTC._duckbloxDestroyHooked = true
+                    local rawDestroy = DTC.Destroy
+                    DTC.Destroy = function(self, ...)
+                        if activeDefenseClient == self then
+                            activeDefenseClient = nil
+                        end
+                        return rawDestroy(self, ...)
+                    end
+                end
+            end
+        end
+    end)
+end
+initDefenseHook()
+
 local function notify(title, text)
     if not CONFIG.Notification then return end
     pcall(function()
@@ -415,6 +467,11 @@ local function checkDodgeAlignment()
     if dodgeHasReset and shouldTrigger then
         dodgeHasReset = false
         lastDodgeTrigger = os.clock()
+        pcall(function()
+            if activeDefenseClient and typeof(activeDefenseClient.Press) == "function" then
+                activeDefenseClient:Press()
+            end
+        end)
         triggerPerfectHit()
         notify("DODGE", "Perfect Dodge")
     end
