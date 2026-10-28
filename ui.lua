@@ -393,6 +393,16 @@ local function triggerBowClick(x, y)
     end)
 end
 
+local function isGoldColor(color)
+    if not color then return false end
+    return (color.R > 0.65) and (color.G > 0.55) and (color.B < 0.6) and (color.R >= color.B + 0.15)
+end
+
+local function isGreenColor(color)
+    if not color then return false end
+    return (color.G > 0.55) and (color.G > color.R) and (color.G > color.B)
+end
+
 local function scanAndTriggerBow()
     if not autoBowEnabled then return end
     if (os.clock() - lastBowTrigger) < BOW_SETTINGS.Cooldown then return end
@@ -400,69 +410,95 @@ local function scanAndTriggerBow()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return end
 
-    -- ค้นหา Minigame GUI
-    local activeGui = nil
-    for _, name in ipairs(BOW_SETTINGS.GuiNames) do
-        local g = playerGui:FindFirstChild(name)
-        if g and g:IsA("ScreenGui") and g.Enabled then
-            activeGui = g
-            break
+    -- ค้นหา Minigame Container (ตรวจหาทั้ง POWER SHOT และชื่อทั่วไป)
+    local activeContainer = nil
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            for _, label in ipairs(gui:GetDescendants()) do
+                if label:IsA("TextLabel") and label.Visible then
+                    local text = label.Text:upper()
+                    if text:find("POWER SHOT") or text:find("GOLD BAND") or text:find("SPACE / CLICK") then
+                        activeContainer = label:FindFirstAncestorOfClass("Frame") or label.Parent or gui
+                        break
+                    end
+                end
+            end
+            if activeContainer then break end
+            
+            local lname = gui.Name:lower()
+            if lname:find("bow") or lname:find("minigame") or lname:find("qte") or lname:find("timing") then
+                activeContainer = gui
+                break
+            end
         end
     end
 
-    if not activeGui then
-        for _, g in ipairs(playerGui:GetChildren()) do
-            if g:IsA("ScreenGui") and g.Enabled then
-                local lname = g.Name:lower()
-                if lname:find("bow") or lname:find("minigame") or lname:find("qte") or lname:find("timing") then
-                    activeGui = g
+    if not activeContainer then return end
+
+    -- ค้นหา Gold Band (แถบสีทอง)
+    local goldBand = nil
+    for _, obj in ipairs(activeContainer:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible then
+            local name = obj.Name:lower()
+            if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
+                goldBand = obj
+                break
+            end
+            if obj.AbsoluteSize.Y > 0 and (isGoldColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3))) then
+                goldBand = obj
+                break
+            end
+        end
+    end
+
+    -- ค้นหาคันธนู (Bow) หรือแถบพลังงานสีเขียว (Fill Bar)
+    local indicator, indType = nil, nil
+    for _, obj in ipairs(activeContainer:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible then
+            local name = obj.Name:lower()
+            if name:find("bow") or name:find("arrow") or name:find("needle") or name:find("pointer") then
+                indicator, indType = obj, "BOW"
+                break
+            end
+        end
+    end
+
+    if not indicator then
+        for _, obj in ipairs(activeContainer:GetDescendants()) do
+            if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 5 then
+                local name = obj.Name:lower()
+                if name:find("fill") or name:find("power") or isGreenColor(obj.BackgroundColor3) then
+                    indicator, indType = obj, "FILL"
                     break
                 end
             end
         end
     end
 
-    if not activeGui then return end
+    if not goldBand or not indicator then return end
 
-    -- ค้นหา Target Zone และ Indicator
-    local targetZone = nil
-    for _, name in ipairs(BOW_SETTINGS.TargetNames) do
-        local f = activeGui:FindFirstChild(name, true)
-        if f and f:IsA("GuiObject") and f.Visible then
-            targetZone = f
-            break
-        end
-    end
-
-    local indicator = nil
-    for _, name in ipairs(BOW_SETTINGS.IndicatorNames) do
-        local f = activeGui:FindFirstChild(name, true)
-        if f and f:IsA("GuiObject") and f.Visible then
-            indicator = f
-            break
-        end
-    end
-
-    if not targetZone or not indicator then return end
-
-    local tPos = targetZone.AbsolutePosition
-    local tSize = targetZone.AbsoluteSize
-    local iPos = indicator.AbsolutePosition
-    local iSize = indicator.AbsoluteSize
-
-    local indCenterX = iPos.X + (iSize.X / 2)
-    local indCenterY = iPos.Y + (iSize.Y / 2)
-
+    local goldTop = goldBand.AbsolutePosition.Y
+    local goldBottom = goldBand.AbsolutePosition.Y + goldBand.AbsoluteSize.Y
     local tol = BOW_SETTINGS.Tolerance
-    local minX = tPos.X - tol
-    local maxX = tPos.X + tSize.X + tol
-    local minY = tPos.Y - tol
-    local maxY = tPos.Y + tSize.Y + tol
 
-    -- เช็คการเข้าสู่ Perfect Zone
-    if (indCenterX >= minX and indCenterX <= maxX) and (indCenterY >= minY and indCenterY <= maxY) then
+    local currentY = nil
+    if indType == "BOW" then
+        currentY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y / 2)
+    elseif indType == "FILL" then
+        currentY = indicator.AbsolutePosition.Y
+    else
+        currentY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y / 2)
+    end
+
+    -- ตรวจสอบว่าตำแหน่ง Y เข้าสู่กรอบ Gold Band แล้วหรือยัง
+    if (currentY >= (goldTop - tol)) and (currentY <= (goldBottom + tol)) then
         lastBowTrigger = os.clock()
-        triggerBowClick(indCenterX, indCenterY)
+        local clickPos = Vector2.new(
+            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
+            goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y / 2)
+        )
+        triggerBowClick(clickPos.X, clickPos.Y)
+        print("[Auto Bow] 🎯 POWER SHOT - Perfect Hit Triggered!")
     end
 end
 

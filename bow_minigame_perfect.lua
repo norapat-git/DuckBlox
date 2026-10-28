@@ -1,15 +1,12 @@
 --[[
     ========================================================================
-    🏹 Auto Perfect Bow Minigame - LocalScript
+    🏹 Auto Perfect "POWER SHOT" Bow Minigame - LocalScript
     ========================================================================
-    รองรับการทำงาน 2 รูปแบบหลัก:
-    1. UI Detection Mode (ตรวจจับเข็ม/แถบเลื่อนบน UI แบบ Real-time):
-       - คำนวณพิกัด AbsolutePosition ของ Pointer/Needle กับ Perfect Zone
-       - เมื่อเข็มวิ่งมาถึงโซน Perfect จะสั่ง Trigger ทันทีในระดับ Frame-Perfect (RenderStepped)
-       - จำลองการคลิกด้วย VirtualInputManager / VirtualUser / Tool Activate
-
-    2. RemoteEvent Direct Mode (ยิงผ่าน RemoteEvent โดยตรง):
-       - ยิง RemoteEvent ทันทีเมื่อเข้าสู่จังหวะ Perfect สำหรับเกมที่ใช้ระบบ Server/Client Sync
+    ออกแบบเฉพาะสำหรับมินิเกมยิงธนู Power Shot (4 จังหวะ):
+    - "Shoot when the power hits the gold band! [SPACE / CLICK]"
+    - ตรวจจับแถบสีทอง (Gold Band) และการเลื่อนขึ้นของคันธนู / แถบพลังงานสีเขียว (Vertical Y-Axis)
+    - ยิงระดับ Frame-Perfect (RenderStepped) ทันทีที่เข้าสู่ Gold Band
+    - จำลองการกด [SPACEBAR] และ [LEFT CLICK] ครบ 4 รอบอัตโนมัติ
     ========================================================================
 --]]
 
@@ -27,40 +24,17 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 -- ========================================================
 local CONFIG = {
     Enabled = true,                -- เปิด/ปิดการทำงานเริ่มต้น
-    ToggleKey = Enum.KeyCode.V,    -- ปุ่มลัดสำหรับ เปิด/ปิด (กด V บนคีย์บอร์ด)
+    ToggleKey = Enum.KeyCode.V,    -- ปุ่มลัด Toggle (กด V บนคีย์บอร์ด)
     
-    -- โหมดการทำงาน: "UI_DETECTION" หรือ "REMOTE_FIRE" หรือ "HYBRID" (ทำทั้งคู่)
-    Mode = "UI_DETECTION", 
-
-    -- [1] ตั้งค่าสำหรับ UI Detection
-    UI = {
-        -- คำค้นหาชื่อ GUI หรือ Frame ที่เกี่ยวข้องกับมินิเกมยิงธนู
-        PossibleGuiNames = {"BowMinigame", "BowGui", "Minigame", "QTE", "TimingBar", "AimMinigame", "ArrowMinigame"},
-        
-        -- ชื่อของโซน Perfect (Target)
-        PossibleTargetNames = {"Perfect", "PerfectZone", "SweetSpot", "GreenZone", "TargetZone", "Target", "Goal"},
-        
-        -- ชื่อของเข็มหรือตัวเลื่อน (Indicator / Needle)
-        PossibleIndicatorNames = {"Pointer", "Needle", "Indicator", "Cursor", "Bar", "Line", "Slider"},
-        
-        -- ความคลาดเคลื่อนที่ยอมรับได้ (offset เป็น pixels)
-        HitTolerancePixels = 4,
-        
-        -- คูลดาวน์หลังจากการกด 1 ครั้ง (วินาที) ป้องกันการกดเบิ้ล
-        ClickCooldown = 0.5,
-    },
-
-    -- [2] ตั้งค่าสำหรับ RemoteEvent Mode
-    Remote = {
-        RemoteName = "MinigameAction", -- เปลี่ยนตามชื่อ RemoteEvent ของเกม
-        TotalShots = 4,                -- จำนวนนัดที่ต้องยิง
-        PerfectInterval = 0.75,        -- เวลาจังหวะ Perfect (วินาที)
-        AutoLoop = false,              -- เล่นวนลูปอัตโนมัติหรือไม่
-    },
-
-    -- [3] การแจ้งเตือน
+    TotalShots = 4,                -- มินิเกมนี้มีทั้งหมด 4 รอบ
+    HitTolerancePixels = 6,        -- ระยะเผื่อความคลาดเคลื่อน (พิกเซล)
+    ClickCooldown = 0.45,          -- คูลดาวน์หน่วงเวลาระหว่างรอบยิง (วินาที)
+    
     Notification = true,
 }
+
+local currentShot = 0
+local lastTriggerTime = 0
 
 -- ========================================================
 -- 🔔 Notification Helper
@@ -78,167 +52,193 @@ local function notify(title, text)
 end
 
 -- ========================================================
--- 🎯 Click / Input Simulator (จำลองการคลิก)
+-- 🎯 Trigger Action (กด Spacebar และคลิกเมาส์ซ้ายพร้อมกัน)
 -- ========================================================
-local function triggerPerfectHit(targetPosition)
-    -- วิธีที่ 1: ใช้ VirtualInputManager จำลองการคลิกเมาส์ซ้ายจริง
-    pcall(function()
-        local clickX = targetPosition and targetPosition.X or (workspace.CurrentCamera.ViewportSize.X / 2)
-        local clickY = targetPosition and targetPosition.Y or (workspace.CurrentCamera.ViewportSize.Y / 2)
-
-        VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 0)
-        task.wait(0.02)
-        VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
-    end)
-
-    -- วิธีที่ 2: จำลองการกด Spacebar (กรณีมินิเกมใช้ Spacebar กด)
+local function triggerPerfectHit(clickPosition)
+    -- 1. จำลองการกด SPACEBAR
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
         task.wait(0.02)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
     end)
 
-    -- วิธีที่ 3: สั่ง Tool:Activate() ถ้าตัวละครถือธนูอยู่
+    -- 2. จำลองการคลิกเมาส์ซ้าย (Mouse 1)
     pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local tool = char:FindFirstChildOfClass("Tool")
-            if tool then
-                tool:Activate()
-            end
+        local pos = clickPosition or Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+        VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 0)
+        task.wait(0.02)
+        VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+    end)
+
+    -- 3. หากมี RemoteEvent มินิเกมใน ReplicatedStorage
+    pcall(function()
+        local remote = ReplicatedStorage:FindFirstChild("MinigameAction")
+            or ReplicatedStorage:FindFirstChild("BowMinigame")
+            or ReplicatedStorage:FindFirstChild("ShootAction")
+        if remote and remote:IsA("RemoteEvent") then
+            remote:FireServer(currentShot, 0.75)
         end
     end)
 end
 
 -- ========================================================
--- 🔍 UI Scanner & Hit Box Overlap Detector
+-- 🔍 Power Shot UI Scanner
 -- ========================================================
-local lastTriggerTime = 0
 
--- ค้นหา Object ตามรายชื่อที่ระบุ
-local function findDescendantByNames(parent, nameList)
-    for _, name in ipairs(nameList) do
-        local found = parent:FindFirstChild(name, true)
-        if found and found:IsA("GuiObject") and found.Visible then
-            return found
-        end
-    end
-    return nil
+-- ตรวจสอบว่าสีคล้ายกับ Gold Band หรือไม่ (โทนเหลือง/ทอง)
+local function isGoldColor(color)
+    if not color then return false end
+    -- Gold Band มีค่า R สูง, G ปานกลาง-สูง, B ต่ำกว่า R/G
+    return (color.R > 0.65) and (color.G > 0.55) and (color.B < 0.6) and (color.R >= color.B + 0.15)
 end
 
--- ค้นหาหน้าจอ Minigame GUI ปัจจุบัน
-local function getActiveMinigameGui()
-    for _, guiName in ipairs(CONFIG.UI.PossibleGuiNames) do
-        local gui = PlayerGui:FindFirstChild(guiName)
-        if gui and gui:IsA("ScreenGui") and gui.Enabled then
-            return gui
-        end
-    end
-    
-    -- หากไม่เจอตามชื่อ ให้สแกนหา ScreenGui ใดๆ ที่มีคำว่า Minigame หรือ Bow
+-- ตรวจสอบว่าสีคล้ายกับ Green Fill หรือไม่ (แถบพลังงานสีเขียว)
+local function isGreenColor(color)
+    if not color then return false end
+    return (color.G > 0.55) and (color.G > color.R) and (color.G > color.B)
+end
+
+-- ค้นหาหน้าจอ Power Shot โดยเฉพาะ
+local function findPowerShotContainer()
     for _, gui in ipairs(PlayerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
-            local lower = gui.Name:lower()
-            if lower:find("bow") or lower:find("minigame") or lower:find("qte") or lower:find("shoot") then
-                return gui
+            -- สแกนหา TextLabel ที่มีคำเฉพาะของมินิเกมนี้
+            for _, label in ipairs(gui:GetDescendants()) do
+                if label:IsA("TextLabel") and label.Visible then
+                    local text = label.Text:upper()
+                    if text:find("POWER SHOT") or text:find("GOLD BAND") or text:find("SPACE / CLICK") then
+                        -- ดึง Frame หลักที่ครอบคลุมมินิเกม
+                        local container = label:FindFirstAncestorOfClass("Frame") or label.Parent
+                        return container or gui
+                    end
+                end
             end
         end
     end
-    
     return nil
 end
 
--- ตรวจสอบว่าเข็ม (Indicator) เข้าสู่โซน Perfect หรือยัง
-local function checkUIAlignment()
-    if not CONFIG.Enabled then return end
-    if os.clock() - lastTriggerTime < CONFIG.UI.ClickCooldown then return end
-
-    local minigameGui = getActiveMinigameGui()
-    if not minigameGui then return end
-
-    local targetZone = findDescendantByNames(minigameGui, CONFIG.UI.PossibleTargetNames)
-    local indicator = findDescendantByNames(minigameGui, CONFIG.UI.PossibleIndicatorNames)
-
-    if not targetZone or not indicator then return end
-
-    -- ดึงตำแหน่งและขนาด Absolute บนหน้าจอ
-    local targetPos = targetZone.AbsolutePosition
-    local targetSize = targetZone.AbsoluteSize
-
-    local indPos = indicator.AbsolutePosition
-    local indSize = indicator.AbsoluteSize
-
-    -- จุดกึ่งกลางของเข็ม
-    local indCenterX = indPos.X + (indSize.X / 2)
-    local indCenterY = indPos.Y + (indSize.Y / 2)
-
-    -- ขอบเขตของโซน Perfect (รวมค่า Tolerance)
-    local tol = CONFIG.UI.HitTolerancePixels
-    local minX = targetPos.X - tol
-    local maxX = targetPos.X + targetSize.X + tol
-    local minY = targetPos.Y - tol
-    local maxY = targetPos.Y + targetSize.Y + tol
-
-    -- ตรวจสอบการทับซ้อน (Overlap) แกน X และ Y
-    local inZoneX = (indCenterX >= minX and indCenterX <= maxX)
-    local inZoneY = (indCenterY >= minY and indCenterY <= maxY)
-
-    if inZoneX and inZoneY then
-        lastTriggerTime = os.clock()
-        notify("🎯 Perfect Hit!", "ตรวจจับจังหวะ Perfect สำเร็จ กำลังยิง...")
-        triggerPerfectHit(Vector2.new(indCenterX, indCenterY))
+-- ค้นหา Gold Band (แถบสีทอง)
+local function findGoldBand(container)
+    -- ค้นหาตามชื่อก่อน
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible then
+            local name = obj.Name:lower()
+            if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
+                return obj
+            end
+        end
     end
+
+    -- หากไม่เจอตามชื่อ ให้ตรวจจากค่าสี (BackgroundColor3 / ImageColor3)
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 0 then
+            if isGoldColor(obj.BackgroundColor3) then
+                return obj
+            end
+            if obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3) then
+                return obj
+            end
+        end
+    end
+
+    return nil
+end
+
+-- ค้นหาคันธนู (Bow Icon) หรือ แถบพลังงานสีเขียว (Green Fill)
+local function findMovingIndicator(container)
+    -- 1. หาคันธนูที่เลื่อนขึ้นข้างหลอด (ImageLabel หรือ Frame ที่มีคำว่า Bow, Arrow, Needle, Icon)
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible then
+            local name = obj.Name:lower()
+            if name:find("bow") or name:find("arrow") or name:find("needle") or name:find("pointer") or name:find("cursor") then
+                return obj, "BOW"
+            end
+        end
+    end
+
+    -- 2. หาแถบพลังงานสีเขียว (Green Fill)
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible then
+            local name = obj.Name:lower()
+            if (name:find("fill") or name:find("bar") or name:find("power")) and obj.AbsoluteSize.Y > 5 then
+                return obj, "FILL"
+            end
+            if isGreenColor(obj.BackgroundColor3) and obj.AbsoluteSize.Y > 5 then
+                return obj, "FILL"
+            end
+        end
+    end
+
+    return nil, nil
 end
 
 -- ========================================================
--- 📡 RemoteEvent Direct Execution
+-- ⚡ Real-Time Vertical Detection (RenderStepped)
 -- ========================================================
-local function fireRemotePerfectSequence()
-    local remote = ReplicatedStorage:FindFirstChild(CONFIG.Remote.RemoteName)
-        or ReplicatedStorage:WaitForChild(CONFIG.Remote.RemoteName, 2)
+local function checkPowerShotAlignment()
+    if not CONFIG.Enabled then return end
+    if (os.clock() - lastTriggerTime) < CONFIG.ClickCooldown then return end
 
-    if not remote or not remote:IsA("RemoteEvent") then
-        warn("[AutoBow] ไม่พบ RemoteEvent: " .. tostring(CONFIG.Remote.RemoteName))
+    local container = findPowerShotContainer()
+    if not container then
+        -- ถ้าหน้าต่างมินิเกมหายไป ให้รีเซ็ตรอบยิง
+        if currentShot ~= 0 then
+            currentShot = 0
+        end
         return
     end
 
-    task.spawn(function()
-        notify("🏹 Bow Remote", "เริ่มส่งสัญญาณยิง Perfect ตามจังหวะ...")
-        for shot = 1, CONFIG.Remote.TotalShots do
-            if not CONFIG.Enabled then break end
-            task.wait(CONFIG.Remote.PerfectInterval)
-            remote:FireServer(shot, CONFIG.Remote.PerfectInterval)
-            print(string.format("[AutoBow] FireServer Shot %d/%d (Perfect)", shot, CONFIG.Remote.TotalShots))
-        end
-        notify("✅ เสร็จสิ้น", "ส่งคำสั่งยิงครบทุกจังหวะแล้ว")
-    end)
+    local goldBand = findGoldBand(container)
+    local indicator, indType = findMovingIndicator(container)
+
+    if not goldBand or not indicator then return end
+
+    -- พิกัดแนวตั้ง (Y-Axis) ของแถบสีทอง (Gold Band)
+    local goldTop = goldBand.AbsolutePosition.Y
+    local goldBottom = goldBand.AbsolutePosition.Y + goldBand.AbsoluteSize.Y
+    local tol = CONFIG.HitTolerancePixels
+
+    -- คำนวณตำแหน่ง Y ปัจจุบันของตัวที่เคลื่อนที่
+    local currentY = nil
+    if indType == "BOW" then
+        -- ใช้จุดกึ่งกลางของคันธนู/ลูกศร
+        currentY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y / 2)
+    elseif indType == "FILL" then
+        -- แถบพลังงานเลื่อนขึ้นจากล่างขึ้นบน -> ขอบบนสุดของแท่งสีเขียวคือ AbsolutePosition.Y
+        currentY = indicator.AbsolutePosition.Y
+    end
+
+    if not currentY then return end
+
+    -- ตรวจสอบว่าจุดที่เลื่อนขึ้น เข้าไปอยู่ในกรอบความสูงของแถบสีทองแล้วหรือยัง
+    if (currentY >= (goldTop - tol)) and (currentY <= (goldBottom + tol)) then
+        lastTriggerTime = os.clock()
+        currentShot = (currentShot % CONFIG.TotalShots) + 1
+
+        local clickPos = Vector2.new(
+            goldBand.AbsolutePosition.X + (goldBand.AbsoluteSize.X / 2),
+            goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y / 2)
+        )
+
+        triggerPerfectHit(clickPos)
+        notify("🎯 PERFECT!", string.format("ยิงจังหวะ Perfect รอบที่ %d/%d สำเร็จ", currentShot, CONFIG.TotalShots))
+    end
 end
 
 -- ========================================================
--- 🔄 Game Loop & Input Listeners
+-- 🔄 Listeners
 -- ========================================================
+RunService.RenderStepped:Connect(checkPowerShotAlignment)
 
--- เชื่อมต่อ RenderStepped สำหรับการสแกนระดับ Frame-Perfect (60-144+ FPS)
-RunService.RenderStepped:Connect(function()
-    if CONFIG.Mode == "UI_DETECTION" or CONFIG.Mode == "HYBRID" then
-        checkUIAlignment()
-    end
-end)
-
--- ปุ่มลัด Toggle เปิด/ปิด สคริปต์
+-- ปุ่มลัด Toggle เปิด/ปิด
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    
     if input.KeyCode == CONFIG.ToggleKey then
         CONFIG.Enabled = not CONFIG.Enabled
         local status = CONFIG.Enabled and "เปิดใช้งาน (ENABLED)" or "ปิดใช้งาน (DISABLED)"
-        notify("Auto Bow Status", "ระบบ: " .. status)
-        
-        -- ถ้าเปิดใช้งานในโหมด Remote ให้เริ่ม Sequence ทันที
-        if CONFIG.Enabled and (CONFIG.Mode == "REMOTE_FIRE" or CONFIG.Mode == "HYBRID") then
-            fireRemotePerfectSequence()
-        end
+        notify("Auto Power Shot", "ระบบ: " .. status)
     end
 end)
 
-notify("🏹 Auto Bow Loaded", "กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิดระบบ")
+notify("🏹 Power Shot Loaded", "ระบบ Auto Perfect พร้อมทำงาน (กด [" .. CONFIG.ToggleKey.Name .. "] เพื่อเปิด/ปิด)")
