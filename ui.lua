@@ -680,34 +680,79 @@ local function stepDodge()
     prevNeedleX = needleX
 end
 
-local function clickGuiButton(button)
-    if not button or not button:IsA("GuiObject") then return false end
+local function triggerGuiObject(obj)
+    if not obj or not obj:IsA("GuiObject") then return false end
 
-    local targetBtn = button
-    if not targetBtn:IsA("GuiButton") and targetBtn.Parent and targetBtn.Parent:IsA("GuiButton") then
-        targetBtn = targetBtn.Parent
+    local candidates = {obj}
+    if obj.Parent and obj.Parent:IsA("GuiObject") then
+        table.insert(candidates, obj.Parent)
+    end
+    local ancestorBtn = obj:FindFirstAncestorOfClass("GuiButton")
+    if ancestorBtn and ancestorBtn ~= obj and ancestorBtn ~= obj.Parent then
+        table.insert(candidates, ancestorBtn)
+    end
+    for _, child in ipairs(obj:GetChildren()) do
+        if child:IsA("GuiButton") then
+            table.insert(candidates, child)
+        end
     end
 
-    pcall(function()
-        if typeof(firesignal) == "function" and targetBtn:IsA("GuiButton") then
-            pcall(firesignal, targetBtn.MouseButton1Click)
-            pcall(firesignal, targetBtn.Activated)
+    local fired = false
+
+    for _, target in ipairs(candidates) do
+        if typeof(firesignal) == "function" then
+            pcall(function()
+                if target:IsA("GuiButton") then
+                    firesignal(target.Activated)
+                    firesignal(target.MouseButton1Click)
+                    firesignal(target.MouseButton1Down)
+                    firesignal(target.MouseButton1Up)
+                    fired = true
+                end
+            end)
         end
-    end)
 
-    local pos = button.AbsolutePosition
-    local size = button.AbsoluteSize
-    local screenGui = button:FindFirstAncestorOfClass("ScreenGui")
-    local insetY = (screenGui and screenGui.IgnoreGuiInset) and 0 or GuiService:GetGuiInset().Y
+        if typeof(getconnections) == "function" then
+            pcall(function()
+                if target:IsA("GuiButton") then
+                    for _, c in ipairs(getconnections(target.Activated)) do
+                        pcall(function() c:Fire() fired = true end)
+                    end
+                    for _, c in ipairs(getconnections(target.MouseButton1Click)) do
+                        pcall(function() c:Fire() fired = true end)
+                    end
+                    for _, c in ipairs(getconnections(target.MouseButton1Down)) do
+                        pcall(function() c:Fire() fired = true end)
+                    end
+                end
+                for _, c in ipairs(getconnections(target.InputBegan)) do
+                    pcall(function()
+                        c:Fire({
+                            UserInputType = Enum.UserInputType.MouseButton1,
+                            UserInputState = Enum.UserInputState.Begin,
+                            Position = Vector3.new(0, 0, 0),
+                        }, false)
+                        fired = true
+                    end)
+                end
+            end)
+        end
+    end
 
-    local centerX = pos.X + (size.X * 0.5)
-    local centerY = pos.Y + (size.Y * 0.5) + insetY
+    if not fired then
+        local pos = obj.AbsolutePosition
+        local size = obj.AbsoluteSize
+        local screenGui = obj:FindFirstAncestorOfClass("ScreenGui")
+        local insetY = (screenGui and screenGui.IgnoreGuiInset) and 0 or GuiService:GetGuiInset().Y
+        local centerX = pos.X + (size.X * 0.5)
+        local centerY = pos.Y + (size.Y * 0.5) + insetY
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
+            task.wait(0.015)
+            VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
+        end)
+    end
 
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
-        task.wait(0.02)
-        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
-    end)
     return true
 end
 
@@ -867,16 +912,16 @@ end
 
 local function executeBasicAttack(menuState)
     if not menuState or not menuState.attackBtn then return end
-    clickGuiButton(menuState.attackBtn)
+    triggerGuiObject(menuState.attackBtn)
     task.wait(0.14)
     if bowCache.active or dodgeCache.active then return end
 
     local centerOpts = getCenterPanelOptions(menuState.gui, menuState.currentEN)
     if #centerOpts > 0 then
-        clickGuiButton(centerOpts[1])
+        triggerGuiObject(centerOpts[1])
         task.wait(0.1)
     else
-        clickGuiButton(menuState.attackBtn)
+        triggerGuiObject(menuState.attackBtn)
     end
 end
 
@@ -886,17 +931,17 @@ local combatThread = task.spawn(function()
             local menuState = scanCombatMenu()
             if menuState then
                 if menuState.hasBluePoints and menuState.skillsBtn then
-                    clickGuiButton(menuState.skillsBtn)
+                    triggerGuiObject(menuState.skillsBtn)
                     task.wait(0.2)
 
                     if not bowCache.active and not dodgeCache.active then
                         local skillOptions = getCenterPanelOptions(menuState.gui, menuState.currentEN)
                         if #skillOptions > 0 then
                             local chosenSkill = skillOptions[math.random(1, #skillOptions)]
-                            clickGuiButton(chosenSkill)
+                            triggerGuiObject(chosenSkill)
                             task.wait(0.12)
                             if not bowCache.active and not dodgeCache.active and isActuallyVisible(chosenSkill) then
-                                clickGuiButton(chosenSkill)
+                                triggerGuiObject(chosenSkill)
                             end
                             task.wait(0.25)
                         end
