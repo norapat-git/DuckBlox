@@ -2,10 +2,14 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
+
+local globalEnv = (typeof(getgenv) == "function" and getgenv()) or _G
+if globalEnv.DuckBloxCleanup then
+    pcall(globalEnv.DuckBloxCleanup)
+end
 
 local parentGui
 if typeof(gethui) == "function" then
@@ -20,6 +24,32 @@ end
 if parentGui:FindFirstChild("DuckBloxCustomUI") then
     parentGui.DuckBloxCustomUI:Destroy()
 end
+
+local activeConnections = {}
+local activeThreads = {}
+local isRunning = true
+
+local function trackConnection(conn)
+    table.insert(activeConnections, conn)
+    return conn
+end
+
+local function cleanupAll()
+    isRunning = false
+    for _, conn in ipairs(activeConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    table.clear(activeConnections)
+    for _, thread in ipairs(activeThreads) do
+        pcall(function() task.cancel(thread) end)
+    end
+    table.clear(activeThreads)
+    if parentGui and parentGui:FindFirstChild("DuckBloxCustomUI") then
+        parentGui.DuckBloxCustomUI:Destroy()
+    end
+end
+
+globalEnv.DuckBloxCleanup = cleanupAll
 
 local THEME = {
     Background = Color3.fromRGB(20, 22, 28),
@@ -138,13 +168,13 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 8)
 CloseCorner.Parent = CloseBtn
 
-CloseBtn.MouseEnter:Connect(function()
+trackConnection(CloseBtn.MouseEnter:Connect(function()
     TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.Danger, TextColor3 = Color3.new(1, 1, 1)}):Play()
-end)
+end))
 
-CloseBtn.MouseLeave:Connect(function()
+trackConnection(CloseBtn.MouseLeave:Connect(function()
     TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(38, 42, 54), TextColor3 = THEME.TextMuted}):Play()
-end)
+end))
 
 local ScrollContainer = Instance.new("ScrollingFrame")
 ScrollContainer.Name = "ScrollContainer"
@@ -255,9 +285,9 @@ local function createToggle(title, defaultState, onToggle)
         if onToggle then onToggle(isEnabled) end
     end
 
-    switch.MouseButton1Click:Connect(function()
+    trackConnection(switch.MouseButton1Click:Connect(function()
         updateSwitch(not isEnabled, true)
-    end)
+    end))
 
     return {
         Set = function(val) updateSwitch(val, true) end,
@@ -265,15 +295,31 @@ local function createToggle(title, defaultState, onToggle)
     }
 end
 
+local autoCombatEnabled = false
 local autoBowEnabled = false
+local autoDodgeEnabled = false
+
 local lastBowTrigger = 0
-local bowConnection = nil
 local bowHasResetToBottom = true
 local prevBowY = nil
 
-local BOW_SETTINGS = {
-    Cooldown = 0.4,
-    Tolerance = 5,
+local lastDodgeTrigger = 0
+local prevNeedleX = nil
+local dodgeHasReset = true
+
+local bowCache = {
+    active = false,
+    container = nil,
+    goldBand = nil,
+    gaugeFrame = nil,
+    indicator = nil,
+}
+
+local dodgeCache = {
+    active = false,
+    container = nil,
+    needle = nil,
+    whiteZone = nil,
 }
 
 local function triggerSpacebar()
@@ -287,7 +333,7 @@ local function triggerSpacebar()
 end
 
 local function isActuallyVisible(obj)
-    if not obj or not obj:IsA("GuiObject") then return false end
+    if not obj or not obj.Parent or not obj:IsA("GuiObject") then return false end
     if not obj.Visible or obj.AbsoluteSize.X <= 0 or obj.AbsoluteSize.Y <= 0 then
         return false
     end
@@ -315,80 +361,90 @@ local function isGreenColor(color)
     return (color.G > 0.55) and (color.G > color.R) and (color.G > color.B)
 end
 
-local function scanAndTriggerBow()
-    if not autoBowEnabled then return end
-    if (os.clock() - lastBowTrigger) < BOW_SETTINGS.Cooldown then return end
+local function isWhiteColor(c)
+    if not c then return false end
+    return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
+end
 
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return end
+local function isRedNeedleColor(c)
+    if not c then return false end
+    return (c.R > 0.70) and (c.G < 0.58) and (c.B < 0.58) and ((c.R - c.G) > 0.20)
+end
 
-    local activeContainer = nil
+local function refreshBowCache(playerGui)
+    if bowCache.active and isActuallyVisible(bowCache.indicator) and (isActuallyVisible(bowCache.goldBand) or isActuallyVisible(bowCache.gaugeFrame)) then
+        return
+    end
+
+    bowCache.active = false
+    bowCache.container = nil
+    bowCache.goldBand = nil
+    bowCache.gaugeFrame = nil
+    bowCache.indicator = nil
+
+    local foundContainer = nil
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Enabled then
             for _, label in ipairs(gui:GetDescendants()) do
-                if label:IsA("TextLabel") and isActuallyVisible(label) then
+                if label:IsA("TextLabel") and label.Visible then
                     local text = label.Text:upper()
                     if text:find("POWER SHOT") or text:find("GOLD BAND") then
-                        local ancestor = label.Parent
-                        while ancestor and ancestor ~= gui do
-                            if ancestor:IsA("Frame") and ancestor.AbsoluteSize.X >= 200 and ancestor.AbsoluteSize.Y >= 120 then
-                                activeContainer = ancestor
-                                break
+                        if isActuallyVisible(label) then
+                            local ancestor = label.Parent
+                            while ancestor and ancestor ~= gui do
+                                if ancestor:IsA("Frame") and ancestor.AbsoluteSize.X >= 200 and ancestor.AbsoluteSize.Y >= 120 then
+                                    foundContainer = ancestor
+                                    break
+                                end
+                                ancestor = ancestor.Parent
                             end
-                            ancestor = ancestor.Parent
+                            foundContainer = foundContainer or gui
+                            break
                         end
-                        activeContainer = activeContainer or gui
-                        break
                     end
                 end
             end
-            if activeContainer then break end
+            if foundContainer then break end
         end
     end
 
-    if not activeContainer then
+    if not foundContainer then
         bowHasResetToBottom = true
         prevBowY = nil
         return
     end
 
-    local goldBand = nil
-    local gaugeFrame = nil
+    local goldBand, gaugeFrame, indicator = nil, nil, nil
+    local descendants = foundContainer:GetDescendants()
 
-    for _, obj in ipairs(activeContainer:GetDescendants()) do
-        if obj:IsA("GuiObject") and isActuallyVisible(obj) then
+    for _, obj in ipairs(descendants) do
+        if obj:IsA("GuiObject") and obj.Visible then
             local name = obj.Name:lower()
             if not goldBand then
-                if name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target") then
+                if (name:find("gold") or name:find("band") or name:find("sweet") or name:find("perfect") or name:find("target")) and isActuallyVisible(obj) then
                     goldBand = obj
-                elseif obj.AbsoluteSize.Y > 0 and (isGoldColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3))) then
+                elseif obj.AbsoluteSize.Y > 0 and (isGoldColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isGoldColor(obj.ImageColor3))) and isActuallyVisible(obj) then
                     goldBand = obj
                 end
             end
             if not gaugeFrame then
-                if (name:find("gauge") or name:find("bar") or name:find("meter") or name:find("power")) and obj.AbsoluteSize.Y > 50 then
+                if (name:find("gauge") or name:find("bar") or name:find("meter") or name:find("power")) and obj.AbsoluteSize.Y > 50 and isActuallyVisible(obj) then
                     gaugeFrame = obj
                 end
             end
-        end
-    end
-
-    local indicator = nil
-    for _, obj in ipairs(activeContainer:GetDescendants()) do
-        if obj:IsA("GuiObject") and isActuallyVisible(obj) then
-            local name = obj.Name:lower()
-            if (name:find("bow") or name:find("arrow") or name:find("pointer")) and not name:find("shadow") and not name:find("bg") then
-                indicator = obj
-                break
+            if not indicator then
+                if (name:find("bow") or name:find("arrow") or name:find("pointer")) and not name:find("shadow") and not name:find("bg") and isActuallyVisible(obj) then
+                    indicator = obj
+                end
             end
         end
     end
 
     if not indicator then
-        for _, obj in ipairs(activeContainer:GetDescendants()) do
-            if obj:IsA("GuiObject") and isActuallyVisible(obj) and obj.AbsoluteSize.Y > 5 then
+        for _, obj in ipairs(descendants) do
+            if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 5 then
                 local name = obj.Name:lower()
-                if name:find("fill") or name:find("power") or isGreenColor(obj.BackgroundColor3) then
+                if (name:find("fill") or name:find("power") or isGreenColor(obj.BackgroundColor3)) and isActuallyVisible(obj) then
                     indicator = obj
                     break
                 end
@@ -396,22 +452,156 @@ local function scanAndTriggerBow()
         end
     end
 
-    if not indicator then return end
+    if indicator and (goldBand or gaugeFrame) then
+        bowCache.container = foundContainer
+        bowCache.goldBand = goldBand
+        bowCache.gaugeFrame = gaugeFrame
+        bowCache.indicator = indicator
+        bowCache.active = true
+    end
+end
 
-    local targetY = nil
-
-    if goldBand then
-        local goldCenter = goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y * 0.5)
-        targetY = goldCenter - 2
-    elseif gaugeFrame then
-        local gaugeCenter = gaugeFrame.AbsolutePosition.Y + (gaugeFrame.AbsoluteSize.Y * 0.48)
-        targetY = gaugeCenter - 2
+local function refreshDodgeCache(playerGui)
+    if dodgeCache.active and isActuallyVisible(dodgeCache.needle) and isActuallyVisible(dodgeCache.whiteZone) then
+        return
     end
 
-    if not targetY then return end
+    dodgeCache.active = false
+    dodgeCache.container = nil
+    dodgeCache.needle = nil
+    dodgeCache.whiteZone = nil
+
+    local foundContainer = nil
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            for _, label in ipairs(gui:GetDescendants()) do
+                if label:IsA("TextLabel") and label.Visible then
+                    local text = label.Text:upper()
+                    if text:find("INCOMING") or text:find("HITS YOUR SHIELD") or text:find("DODGE = WHITE") or text:find("YOUR SHIELD") then
+                        if isActuallyVisible(label) then
+                            local ancestor = label.Parent
+                            while ancestor and ancestor ~= gui do
+                                if ancestor:IsA("Frame") and ancestor.AbsoluteSize.X >= 250 and ancestor.AbsoluteSize.Y >= 120 and isActuallyVisible(ancestor) then
+                                    foundContainer = ancestor
+                                    break
+                                end
+                                ancestor = ancestor.Parent
+                            end
+                            foundContainer = foundContainer or gui
+                            break
+                        end
+                    end
+                end
+            end
+            if foundContainer then break end
+        end
+    end
+
+    if not foundContainer then
+        dodgeHasReset = true
+        prevNeedleX = nil
+        return
+    end
+
+    local descendants = foundContainer:GetDescendants()
+    local needle = nil
+
+    for _, obj in ipairs(descendants) do
+        if obj:IsA("GuiObject") and obj.Visible and not obj:IsA("TextLabel") and not obj:IsA("TextButton") then
+            local sx = obj.AbsoluteSize.X
+            local sy = obj.AbsoluteSize.Y
+            if sx >= 2 and sx <= 28 and sy >= 24 and sy <= 150 and sy > (sx * 1.8) then
+                local isRed = (obj.BackgroundTransparency < 0.6 and isRedNeedleColor(obj.BackgroundColor3))
+                    or (obj:IsA("ImageLabel") and obj.ImageTransparency < 0.6 and isRedNeedleColor(obj.ImageColor3))
+                if isRed and isActuallyVisible(obj) then
+                    needle = obj
+                    break
+                end
+            end
+        end
+    end
+
+    if not needle then return end
+
+    local needleCenterY = needle.AbsolutePosition.Y + (needle.AbsoluteSize.Y * 0.5)
+    local bestZone = nil
+    local bestDiffY = 999
+
+    for _, obj in ipairs(descendants) do
+        if obj:IsA("GuiObject") and obj.Visible and obj ~= needle and not obj:IsA("TextLabel") and not obj:IsA("TextButton") then
+            local sx = obj.AbsoluteSize.X
+            local sy = obj.AbsoluteSize.Y
+            if sx >= 14 and sx <= 260 and sy >= 16 and sy <= 90 then
+                local isWhite = (obj.BackgroundTransparency < 0.5 and isWhiteColor(obj.BackgroundColor3))
+                    or (obj:IsA("ImageLabel") and obj.ImageTransparency < 0.5 and isWhiteColor(obj.ImageColor3))
+                if isWhite then
+                    local objCenterY = obj.AbsolutePosition.Y + (sy * 0.5)
+                    local diffY = math.abs(objCenterY - needleCenterY)
+                    if diffY <= 24 and diffY < bestDiffY and isActuallyVisible(obj) then
+                        bestDiffY = diffY
+                        bestZone = obj
+                    end
+                end
+            end
+        end
+    end
+
+    if needle and bestZone then
+        dodgeCache.container = foundContainer
+        dodgeCache.needle = needle
+        dodgeCache.whiteZone = bestZone
+        dodgeCache.active = true
+    end
+end
+
+local scannerThread = task.spawn(function()
+    while isRunning and ScreenGui.Parent do
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if playerGui then
+            if autoBowEnabled then
+                pcall(refreshBowCache, playerGui)
+            else
+                bowCache.active = false
+            end
+
+            if autoDodgeEnabled then
+                pcall(refreshDodgeCache, playerGui)
+            else
+                dodgeCache.active = false
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+table.insert(activeThreads, scannerThread)
+
+local function stepBow()
+    if not autoBowEnabled or not bowCache.active then return end
+    if (os.clock() - lastBowTrigger) < 0.4 then return end
+
+    local indicator = bowCache.indicator
+    local goldBand = bowCache.goldBand
+    local gaugeFrame = bowCache.gaugeFrame
+
+    if not indicator or not indicator.Parent or not indicator.Visible then
+        bowCache.active = false
+        bowHasResetToBottom = true
+        prevBowY = nil
+        return
+    end
+
+    local targetY = nil
+    if goldBand and goldBand.Parent and goldBand.Visible then
+        targetY = goldBand.AbsolutePosition.Y + (goldBand.AbsoluteSize.Y * 0.5) - 2
+    elseif gaugeFrame and gaugeFrame.Parent and gaugeFrame.Visible then
+        targetY = gaugeFrame.AbsolutePosition.Y + (gaugeFrame.AbsoluteSize.Y * 0.48) - 2
+    else
+        bowCache.active = false
+        return
+    end
 
     local bowCenterY = indicator.AbsolutePosition.Y + (indicator.AbsoluteSize.Y * 0.5)
-    local tol = BOW_SETTINGS.Tolerance
+    local tol = 5
 
     if bowCenterY > (targetY + 15) then
         bowHasResetToBottom = true
@@ -419,8 +609,7 @@ local function scanAndTriggerBow()
 
     local isMovingUp = false
     if prevBowY ~= nil then
-        local delta = prevBowY - bowCenterY
-        if delta > 0.1 then
+        if (prevBowY - bowCenterY) > 0.1 then
             isMovingUp = true
         end
     end
@@ -438,154 +627,22 @@ local function scanAndTriggerBow()
     prevBowY = bowCenterY
 end
 
-local function setAutoBowState(enabled)
-    autoBowEnabled = enabled
-    if enabled then
-        if not bowConnection then
-            bowConnection = RunService.RenderStepped:Connect(scanAndTriggerBow)
-        end
-    else
-        if bowConnection then
-            bowConnection:Disconnect()
-            bowConnection = nil
-        end
-    end
-end
+local function stepDodge()
+    if not autoDodgeEnabled or not dodgeCache.active then return end
+    if (os.clock() - lastDodgeTrigger) < 0.25 then return end
 
-local autoDodgeEnabled = false
-local lastDodgeTrigger = 0
-local dodgeConnection = nil
-local lastNeedlePositionsX = {}
-local prevNeedleX = nil
-local dodgeHasReset = true
+    local needle = dodgeCache.needle
+    local whiteZone = dodgeCache.whiteZone
 
-local DODGE_SETTINGS = {
-    Cooldown = 0.25,
-}
-
-local function isWhiteColor(c)
-    if not c then return false end
-    return (c.R > 0.85) and (c.G > 0.85) and (c.B > 0.85)
-end
-
-local function isRedNeedleColor(c)
-    if not c then return false end
-    return (c.R > 0.70) and (c.G < 0.58) and (c.B < 0.58) and ((c.R - c.G) > 0.20)
-end
-
-local function findDodgeContainer()
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return nil end
-
-    for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Enabled then
-            for _, label in ipairs(gui:GetDescendants()) do
-                if label:IsA("TextLabel") and isActuallyVisible(label) then
-                    local text = label.Text:upper()
-                    if text:find("INCOMING") or text:find("HITS YOUR SHIELD") or text:find("DODGE = WHITE") or text:find("YOUR SHIELD") then
-                        local ancestor = label.Parent
-                        while ancestor and ancestor ~= gui do
-                            if ancestor:IsA("Frame") and ancestor.AbsoluteSize.X >= 250 and ancestor.AbsoluteSize.Y >= 120 and isActuallyVisible(ancestor) then
-                                return ancestor
-                            end
-                            ancestor = ancestor.Parent
-                        end
-                        return gui
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
-local function getMovingNeedle(container)
-    local redBarCandidate = nil
-    local movingCandidate = nil
-    local maxMoveX = 0
-
-    for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and not obj:IsA("TextLabel") and not obj:IsA("TextButton") and isActuallyVisible(obj) then
-            local sx = obj.AbsoluteSize.X
-            local sy = obj.AbsoluteSize.Y
-
-            if sx >= 2 and sx <= 28 and sy >= 24 and sy <= 150 and sy > (sx * 1.8) then
-                local isRed = (obj.BackgroundTransparency < 0.6 and isRedNeedleColor(obj.BackgroundColor3))
-                    or (obj:IsA("ImageLabel") and obj.ImageTransparency < 0.6 and isRedNeedleColor(obj.ImageColor3))
-
-                if isRed and not redBarCandidate then
-                    redBarCandidate = obj
-                end
-
-                local prevX = lastNeedlePositionsX[obj]
-                local curX = obj.AbsolutePosition.X
-                if prevX ~= nil then
-                    local deltaX = math.abs(prevX - curX)
-                    if deltaX > 0.15 and deltaX > maxMoveX then
-                        maxMoveX = deltaX
-                        movingCandidate = obj
-                    end
-                end
-                lastNeedlePositionsX[obj] = curX
-            end
-        end
-    end
-
-    return redBarCandidate or movingCandidate
-end
-
-local function findWhiteDodgeZone(container, needle)
-    local needleCenterY = needle.AbsolutePosition.Y + (needle.AbsoluteSize.Y * 0.5)
-    local bestZone = nil
-    local bestDiffY = 999
-
-    for _, obj in ipairs(container:GetDescendants()) do
-        if obj:IsA("GuiObject") and not obj:IsA("TextLabel") and not obj:IsA("TextButton") and obj ~= needle and isActuallyVisible(obj) then
-            if not obj:IsDescendantOf(needle) and not needle:IsDescendantOf(obj) then
-                local sx = obj.AbsoluteSize.X
-                local sy = obj.AbsoluteSize.Y
-
-                if sx >= 14 and sx <= 260 and sy >= 16 and sy <= 90 then
-                    local isWhite = (obj.BackgroundTransparency < 0.5 and isWhiteColor(obj.BackgroundColor3))
-                        or (obj:IsA("ImageLabel") and obj.ImageTransparency < 0.5 and isWhiteColor(obj.ImageColor3))
-
-                    if isWhite then
-                        local objCenterY = obj.AbsolutePosition.Y + (sy * 0.5)
-                        local diffY = math.abs(objCenterY - needleCenterY)
-                        if diffY <= 24 and diffY < bestDiffY then
-                            bestDiffY = diffY
-                            bestZone = obj
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    return bestZone
-end
-
-local function scanAndTriggerDodge()
-    if not autoDodgeEnabled then return end
-    if (os.clock() - lastDodgeTrigger) < DODGE_SETTINGS.Cooldown then return end
-
-    local container = findDodgeContainer()
-    if not container then
+    if not needle or not needle.Parent or not needle.Visible or not whiteZone or not whiteZone.Parent or not whiteZone.Visible then
+        dodgeCache.active = false
         dodgeHasReset = true
         prevNeedleX = nil
-        lastNeedlePositionsX = {}
         return
     end
 
-    local needle = getMovingNeedle(container)
-    if not needle then return end
-
-    local whiteZone = findWhiteDodgeZone(container, needle)
-    if not whiteZone then return end
-
     local whiteLeft = whiteZone.AbsolutePosition.X
     local whiteRight = whiteLeft + whiteZone.AbsoluteSize.X
-
     local needleX = needle.AbsolutePosition.X + (needle.AbsoluteSize.X * 0.5)
 
     if needleX < (whiteLeft - 12) or needleX > (whiteRight + 12) then
@@ -622,34 +679,17 @@ local function scanAndTriggerDodge()
     prevNeedleX = needleX
 end
 
-local function setAutoDodgeState(enabled)
-    autoDodgeEnabled = enabled
-    if enabled then
-        if not dodgeConnection then
-            dodgeConnection = RunService.RenderStepped:Connect(scanAndTriggerDodge)
-        end
-    else
-        if dodgeConnection then
-            dodgeConnection:Disconnect()
-            dodgeConnection = nil
-        end
-    end
-end
-
-local autoCombatEnabled = false
-local autoCombatThread = nil
-
 local COMBAT_CONFIG = {
-    ActionDelay = 0.45,
+    ActionDelay = 0.5,
     PrioritizeSkills = true,
     CombatGuiKeywords = {"Combat", "Battle", "Fight", "Turn", "Match", "Action", "Dungeon", "Duel"},
     AttackNames = {
-        "Attack", "AttackBtn", "BasicAttack", "NormalAttack", "Strike", 
+        "Attack", "AttackBtn", "BasicAttack", "NormalAttack", "Strike",
         "Hit", "Slash", "Punch", "Shoot", "Fire", "ActionButton", "Primary"
     },
     SkillNames = {
-        "Skill", "Skill1", "Skill2", "Skill3", "Skill4", "SkillBtn", 
-        "Ability", "Ability1", "Ability2", "Ability3", 
+        "Skill", "Skill1", "Skill2", "Skill3", "Skill4", "SkillBtn",
+        "Ability", "Ability1", "Ability2", "Ability3",
         "Spell", "Magic", "Special", "Burst", "Ultimate"
     },
     TargetNames = {"Target", "Select", "Confirm", "Enemy", "Opponent", "LockOn"},
@@ -717,7 +757,7 @@ local function getActiveCombatGui()
         if gui:IsA("ScreenGui") and gui.Enabled then
             for _, attName in ipairs(COMBAT_CONFIG.AttackNames) do
                 local found = gui:FindFirstChild(attName, true)
-                if found and found:IsA("GuiObject") and found.Visible then
+                if found and found:IsA("GuiObject") and isActuallyVisible(found) then
                     return gui
                 end
             end
@@ -727,109 +767,92 @@ local function getActiveCombatGui()
     return nil
 end
 
-local function autoCombat()
-    while autoCombatEnabled do
-        local combatGui = getActiveCombatGui()
+local combatThread = task.spawn(function()
+    while isRunning and ScreenGui.Parent do
+        if autoCombatEnabled and not bowCache.active and not dodgeCache.active then
+            local combatGui = getActiveCombatGui()
+            if combatGui then
+                local actionDone = false
 
-        if combatGui then
-            local actionDone = false
-
-            if COMBAT_CONFIG.PrioritizeSkills then
-                for _, sName in ipairs(COMBAT_CONFIG.SkillNames) do
-                    local skillBtn = combatGui:FindFirstChild(sName, true)
-                    if skillBtn and skillBtn:IsA("GuiObject") and isSkillReady(skillBtn) then
-                        clickGuiButton(skillBtn)
-                        actionDone = true
-                        task.wait(0.2)
-                        break
+                if COMBAT_CONFIG.PrioritizeSkills then
+                    for _, sName in ipairs(COMBAT_CONFIG.SkillNames) do
+                        if bowCache.active or dodgeCache.active then break end
+                        local skillBtn = combatGui:FindFirstChild(sName, true)
+                        if skillBtn and skillBtn:IsA("GuiObject") and isActuallyVisible(skillBtn) and isSkillReady(skillBtn) then
+                            clickGuiButton(skillBtn)
+                            actionDone = true
+                            task.wait(0.2)
+                            break
+                        end
                     end
                 end
-            end
 
-            if not actionDone then
-                for _, aName in ipairs(COMBAT_CONFIG.AttackNames) do
-                    local atkBtn = combatGui:FindFirstChild(aName, true)
-                    if atkBtn and atkBtn:IsA("GuiObject") and atkBtn.Visible then
-                        clickGuiButton(atkBtn)
-                        actionDone = true
-                        break
+                if not actionDone and not bowCache.active and not dodgeCache.active then
+                    for _, aName in ipairs(COMBAT_CONFIG.AttackNames) do
+                        local atkBtn = combatGui:FindFirstChild(aName, true)
+                        if atkBtn and atkBtn:IsA("GuiObject") and isActuallyVisible(atkBtn) then
+                            clickGuiButton(atkBtn)
+                            actionDone = true
+                            break
+                        end
                     end
                 end
-            end
 
-            task.wait(0.12)
-            for _, tName in ipairs(COMBAT_CONFIG.TargetNames) do
-                local targetBtn = combatGui:FindFirstChild(tName, true)
-                if targetBtn and targetBtn:IsA("GuiObject") and targetBtn.Visible then
-                    clickGuiButton(targetBtn)
-                    break
+                if not bowCache.active and not dodgeCache.active then
+                    task.wait(0.12)
+                    for _, tName in ipairs(COMBAT_CONFIG.TargetNames) do
+                        local targetBtn = combatGui:FindFirstChild(tName, true)
+                        if targetBtn and targetBtn:IsA("GuiObject") and isActuallyVisible(targetBtn) then
+                            clickGuiButton(targetBtn)
+                            break
+                        end
+                    end
                 end
-            end
 
-            if not actionDone then
-                local char = LocalPlayer.Character
-                local tool = char and char:FindFirstChildOfClass("Tool")
-                if tool then
-                    tool:Activate()
-                end
+                task.wait(COMBAT_CONFIG.ActionDelay)
+            else
+                task.wait(0.5)
             end
-
-            task.wait(COMBAT_CONFIG.ActionDelay)
         else
-            task.wait(0.5)
+            task.wait(0.15)
         end
     end
-end
-
-local function setAutoCombatState(enabled)
-    autoCombatEnabled = enabled
-    if enabled then
-        if not autoBowEnabled then
-            setAutoBowState(true)
-            if bowToggle and bowToggle.Set then
-                bowToggle.Set(true)
-            end
-        end
-        if not autoDodgeEnabled then
-            setAutoDodgeState(true)
-            if dodgeToggle and dodgeToggle.Set then
-                dodgeToggle.Set(true)
-            end
-        end
-
-        autoCombatThread = task.spawn(autoCombat)
-    else
-        autoCombatEnabled = false
-        if autoCombatThread then
-            task.cancel(autoCombatThread)
-            autoCombatThread = nil
-        end
-    end
-end
+end)
+table.insert(activeThreads, combatThread)
 
 createSection("⚔️ Combat & Minigame")
 
-local combatToggle = createToggle(
+createToggle(
     "⚔️ Auto Combat (Attack & Skill)",
     false,
     function(state)
-        setAutoCombatState(state)
+        autoCombatEnabled = state
     end
 )
 
-local bowToggle = createToggle(
+createToggle(
     "🎯 Auto Bow (Perfect Hit)",
     false,
     function(state)
-        setAutoBowState(state)
+        autoBowEnabled = state
+        if not state then
+            bowCache.active = false
+            bowHasResetToBottom = true
+            prevBowY = nil
+        end
     end
 )
 
-local dodgeToggle = createToggle(
+createToggle(
     "🛡️ Auto Dodge (White Zone)",
     false,
     function(state)
-        setAutoDodgeState(state)
+        autoDodgeEnabled = state
+        if not state then
+            dodgeCache.active = false
+            dodgeHasReset = true
+            prevNeedleX = nil
+        end
     end
 )
 
@@ -837,7 +860,7 @@ local function enableSmoothDrag(frame, dragHandle)
     local dragging = false
     local dragInput, dragStart, startPos
 
-    dragHandle.InputBegan:Connect(function(input)
+    trackConnection(dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
@@ -849,15 +872,15 @@ local function enableSmoothDrag(frame, dragHandle)
                 end
             end)
         end
-    end)
+    end))
 
-    dragHandle.InputChanged:Connect(function(input)
+    trackConnection(dragHandle.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
-    end)
+    end))
 
-    UserInputService.InputChanged:Connect(function(input)
+    trackConnection(UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
             TweenService:Create(frame, TweenInfo.new(0.06, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
@@ -867,7 +890,7 @@ local function enableSmoothDrag(frame, dragHandle)
                 )
             }):Play()
         end
-    end)
+    end))
 end
 
 enableSmoothDrag(MainFrame, TopBar)
@@ -894,17 +917,25 @@ local function toggleUI()
     end
 end
 
-CloseBtn.MouseButton1Click:Connect(toggleUI)
-ToggleBubble.MouseButton1Click:Connect(toggleUI)
+trackConnection(CloseBtn.MouseButton1Click:Connect(toggleUI))
+trackConnection(ToggleBubble.MouseButton1Click:Connect(toggleUI))
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+trackConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.V then
         toggleUI()
     end
-end)
+end))
 
-RunService.RenderStepped:Connect(function()
+trackConnection(RunService.RenderStepped:Connect(function()
+    if not ScreenGui.Parent then
+        cleanupAll()
+        return
+    end
+
+    stepBow()
+    stepDodge()
+
     if isWindowVisible then
         if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
             UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -918,4 +949,4 @@ RunService.RenderStepped:Connect(function()
     else
         VirtualCursor.Visible = false
     end
-end)
+end))
