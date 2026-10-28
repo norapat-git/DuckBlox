@@ -510,9 +510,9 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
     local success, err = pcall(function()
         oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             local method = getnamecallmethod()
-            local isSender = (typeof(checkcaller) == "function" and checkcaller()) or false
-            if not isSender then
-                if method == "FireServer" or method == "InvokeServer" or method == "Fire" or method == "Invoke" then
+            if method == "FireServer" or method == "InvokeServer" or method == "Fire" or method == "Invoke" then
+                local isSelf = (self == ScreenGui or (typeof(self) == "Instance" and self:IsDescendantOf(ScreenGui)))
+                if not isSelf then
                     local args = {...}
                     task.spawn(function()
                         addLiveEntry(self, method, args)
