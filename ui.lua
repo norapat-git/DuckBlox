@@ -334,34 +334,202 @@ local dodgeCache = {
 }
 
 local activeDefenseClient = nil
-local function initDefenseHook()
+local activeQTE = nil
+local activeWarriorTiming = nil
+local activeThiefTiming = nil
+local activeMageTiming = nil
+local activeCommandMenu = nil
+
+local function initGameFrameworkHooks()
     pcall(function()
         local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
         local pbc = ps and ps:FindFirstChild("PlatformBattlesClient")
-        local dtcMod = pbc and pbc:FindFirstChild("DefenseTimingClient")
+        if not pbc then return end
+
+        local qteMod = pbc:FindFirstChild("PixelQTE")
+        if qteMod then
+            local QTE = require(qteMod)
+            if typeof(QTE) == "table" and not QTE._duckbloxHooked then
+                QTE._duckbloxHooked = true
+                local rawNew = QTE.new
+                if typeof(rawNew) == "function" then
+                    QTE.new = function(...)
+                        local inst = rawNew(...)
+                        activeQTE = inst
+                        return inst
+                    end
+                end
+                local rawRun = QTE._run
+                if typeof(rawRun) == "function" then
+                    QTE._run = function(self, ...)
+                        activeQTE = self
+                        return rawRun(self, ...)
+                    end
+                end
+                local rawGradeAt = QTE._gradeAt
+                if typeof(rawGradeAt) == "function" then
+                    QTE._gradeAt = function(self, ...)
+                        local origGrade = rawGradeAt(self, ...)
+                        if autoBowEnabled or autoDodgeEnabled then
+                            if typeof(origGrade) == "string" then
+                                return "Perfect"
+                            elseif typeof(origGrade) == "number" then
+                                return 1
+                            elseif typeof(origGrade) == "table" then
+                                if origGrade.Grade then origGrade.Grade = "Perfect" end
+                                if origGrade.grade then origGrade.grade = "Perfect" end
+                                if origGrade.Outcome then origGrade.Outcome = "Perfect" end
+                                return origGrade
+                            end
+                        end
+                        return origGrade
+                    end
+                end
+            end
+        end
+
+        local warriorMod = pbc:FindFirstChild("WarriorBladeTimingClient")
+        if warriorMod then
+            local WB = require(warriorMod)
+            if typeof(WB) == "table" and not WB._duckbloxHooked then
+                WB._duckbloxHooked = true
+                local rawNew = WB.new
+                if typeof(rawNew) == "function" then
+                    WB.new = function(...)
+                        local inst = rawNew(...)
+                        activeWarriorTiming = inst
+                        return inst
+                    end
+                end
+                local rawStart = WB.Start
+                if typeof(rawStart) == "function" then
+                    WB.Start = function(self, ...)
+                        activeWarriorTiming = self
+                        local res = rawStart(self, ...)
+                        if autoBowEnabled then
+                            task.spawn(function()
+                                task.wait(0.12)
+                                pcall(function()
+                                    if typeof(self._completeTrace) == "function" then
+                                        self:_completeTrace()
+                                    elseif typeof(self._finish) == "function" then
+                                        self:_finish()
+                                    end
+                                end)
+                            end)
+                        end
+                        return res
+                    end
+                end
+            end
+        end
+
+        local thiefMod = pbc:FindFirstChild("ThiefSlashClient")
+        if thiefMod then
+            local TS = require(thiefMod)
+            if typeof(TS) == "table" and not TS._duckbloxHooked then
+                TS._duckbloxHooked = true
+                local rawNew = TS.new
+                if typeof(rawNew) == "function" then
+                    TS.new = function(...)
+                        local inst = rawNew(...)
+                        activeThiefTiming = inst
+                        return inst
+                    end
+                end
+                local rawStart = TS.Start
+                if typeof(rawStart) == "function" then
+                    TS.Start = function(self, ...)
+                        activeThiefTiming = self
+                        local res = rawStart(self, ...)
+                        if autoBowEnabled then
+                            task.spawn(function()
+                                task.wait(0.1)
+                                pcall(function()
+                                    if typeof(self._trySlash) == "function" then
+                                        self:_trySlash()
+                                    end
+                                end)
+                            end)
+                        end
+                        return res
+                    end
+                end
+            end
+        end
+
+        local mageMod = pbc:FindFirstChild("MageRhythmClient")
+        if mageMod then
+            local MR = require(mageMod)
+            if typeof(MR) == "table" and not MR._duckbloxHooked then
+                MR._duckbloxHooked = true
+                local rawNew = MR.new
+                if typeof(rawNew) == "function" then
+                    MR.new = function(...)
+                        local inst = rawNew(...)
+                        activeMageTiming = inst
+                        return inst
+                    end
+                end
+                local rawStart = MR.Start
+                if typeof(rawStart) == "function" then
+                    MR.Start = function(self, ...)
+                        activeMageTiming = self
+                        local res = rawStart(self, ...)
+                        if autoBowEnabled then
+                            task.spawn(function()
+                                task.wait(0.15)
+                                pcall(function()
+                                    if typeof(self.Resolve) == "function" then
+                                        self:Resolve()
+                                    end
+                                end)
+                            end)
+                        end
+                        return res
+                    end
+                end
+            end
+        end
+
+        local menuMod = pbc:FindFirstChild("PixelCommandMenu")
+        if menuMod then
+            local PCM = require(menuMod)
+            if typeof(PCM) == "table" and not PCM._duckbloxHooked then
+                PCM._duckbloxHooked = true
+                local rawNew = PCM.new
+                if typeof(rawNew) == "function" then
+                    PCM.new = function(...)
+                        local inst = rawNew(...)
+                        activeCommandMenu = inst
+                        return inst
+                    end
+                end
+            end
+        end
+
+        local dtcMod = pbc:FindFirstChild("DefenseTimingClient")
         if dtcMod then
             local DTC = require(dtcMod)
-            if typeof(DTC) == "table" then
-                if typeof(DTC.new) == "function" and not DTC._duckbloxHooked then
-                    DTC._duckbloxHooked = true
-                    local rawNew = DTC.new
+            if typeof(DTC) == "table" and not DTC._duckbloxHooked then
+                DTC._duckbloxHooked = true
+                local rawNew = DTC.new
+                if typeof(rawNew) == "function" then
                     DTC.new = function(...)
                         local inst = rawNew(...)
                         activeDefenseClient = inst
                         return inst
                     end
                 end
-                if typeof(DTC.Start) == "function" and not DTC._duckbloxStartHooked then
-                    DTC._duckbloxStartHooked = true
-                    local rawStart = DTC.Start
+                local rawStart = DTC.Start
+                if typeof(rawStart) == "function" then
                     DTC.Start = function(self, ...)
                         activeDefenseClient = self
                         return rawStart(self, ...)
                     end
                 end
-                if typeof(DTC.Resolve) == "function" and not DTC._duckbloxResolveHooked then
-                    DTC._duckbloxResolveHooked = true
-                    local rawResolve = DTC.Resolve
+                local rawResolve = DTC.Resolve
+                if typeof(rawResolve) == "function" then
                     DTC.Resolve = function(self, ...)
                         if activeDefenseClient == self then
                             activeDefenseClient = nil
@@ -369,9 +537,8 @@ local function initDefenseHook()
                         return rawResolve(self, ...)
                     end
                 end
-                if typeof(DTC.Destroy) == "function" and not DTC._duckbloxDestroyHooked then
-                    DTC._duckbloxDestroyHooked = true
-                    local rawDestroy = DTC.Destroy
+                local rawDestroy = DTC.Destroy
+                if typeof(rawDestroy) == "function" then
                     DTC.Destroy = function(self, ...)
                         if activeDefenseClient == self then
                             activeDefenseClient = nil
@@ -383,7 +550,7 @@ local function initDefenseHook()
         end
     end)
 end
-initDefenseHook()
+initGameFrameworkHooks()
 
 local function triggerSpacebar()
     task.spawn(function()
@@ -684,6 +851,11 @@ local function stepBow()
     if bowHasResetToBottom and isMovingUp and (isAtCenter or justPassed or crossedDuringLag) then
         bowHasResetToBottom = false
         lastBowTrigger = os.clock()
+        pcall(function()
+            if activeQTE and typeof(activeQTE._press) == "function" then
+                activeQTE:_press()
+            end
+        end)
         triggerSpacebar()
     end
 
@@ -739,6 +911,8 @@ local function stepDodge()
         pcall(function()
             if activeDefenseClient and typeof(activeDefenseClient.Press) == "function" then
                 activeDefenseClient:Press()
+            elseif activeQTE and typeof(activeQTE._press) == "function" then
+                activeQTE:_press()
             end
         end)
         triggerSpacebar()
@@ -1018,41 +1192,137 @@ local function executeBasicAttack(menuState)
     selectEnemyTarget(menuState.gui)
 end
 
+local function tryCodeCombat()
+    if not activeCommandMenu then return false end
+    local canAct = false
+    pcall(function()
+        if typeof(activeCommandMenu._canAct) == "function" then
+            canAct = activeCommandMenu:_canAct()
+        end
+    end)
+    if not canAct then return false end
+
+    local myEN = 0
+    pcall(function()
+        if typeof(activeCommandMenu._myEnergy) == "function" then
+            myEN = tonumber(activeCommandMenu:_myEnergy()) or 0
+        end
+    end)
+
+    local executed = false
+    if myEN > 0 then
+        pcall(function()
+            if typeof(activeCommandMenu._setCommand) == "function" then
+                activeCommandMenu:_setCommand(2)
+            end
+            if typeof(activeCommandMenu._confirmCommand) == "function" then
+                activeCommandMenu:_confirmCommand()
+            end
+            task.wait(0.08)
+            if typeof(activeCommandMenu._openList) == "function" then
+                activeCommandMenu:_openList()
+            end
+            if typeof(activeCommandMenu._setListIndex) == "function" then
+                activeCommandMenu:_setListIndex(1)
+            end
+            if typeof(activeCommandMenu._confirmList) == "function" then
+                activeCommandMenu:_confirmList()
+            end
+            task.wait(0.08)
+            if typeof(activeCommandMenu._beginTargeting) == "function" then
+                activeCommandMenu:_beginTargeting()
+            end
+            if typeof(activeCommandMenu._setTarget) == "function" then
+                activeCommandMenu:_setTarget(1)
+            end
+            if typeof(activeCommandMenu._pickTarget) == "function" then
+                activeCommandMenu:_pickTarget(1)
+            end
+            if typeof(activeCommandMenu._perform) == "function" then
+                activeCommandMenu:_perform()
+                executed = true
+            elseif typeof(activeCommandMenu._send) == "function" then
+                activeCommandMenu:_send()
+                executed = true
+            end
+        end)
+    end
+
+    if not executed then
+        pcall(function()
+            if typeof(activeCommandMenu._setCommand) == "function" then
+                activeCommandMenu:_setCommand(1)
+            end
+            if typeof(activeCommandMenu._confirmCommand) == "function" then
+                activeCommandMenu:_confirmCommand()
+            end
+            task.wait(0.08)
+            if typeof(activeCommandMenu._beginTargeting) == "function" then
+                activeCommandMenu:_beginTargeting()
+            end
+            if typeof(activeCommandMenu._setTarget) == "function" then
+                activeCommandMenu:_setTarget(1)
+            end
+            if typeof(activeCommandMenu._pickTarget) == "function" then
+                activeCommandMenu:_pickTarget(1)
+            end
+            if typeof(activeCommandMenu._perform) == "function" then
+                activeCommandMenu:_perform()
+                executed = true
+            elseif typeof(activeCommandMenu._send) == "function" then
+                activeCommandMenu:_send()
+                executed = true
+            end
+        end)
+    end
+
+    return executed
+end
+
 local combatThread = task.spawn(function()
     while isRunning and ScreenGui.Parent do
         if autoCombatEnabled and not bowCache.active and not dodgeCache.active then
-            local menuState = scanCombatMenu()
-            if menuState then
-                if menuState.hasBluePoints and menuState.skillsBtn then
-                    triggerGuiObject(menuState.skillsBtn)
-                    task.wait(0.22)
+            local codeSuccess = false
+            pcall(function()
+                codeSuccess = tryCodeCombat()
+            end)
 
-                    if not bowCache.active and not dodgeCache.active then
-                        local skillOptions = getCenterPanelOptions(menuState.gui, menuState.currentEN)
-                        if #skillOptions > 0 then
-                            local chosenSkill = skillOptions[math.random(1, #skillOptions)]
-                            triggerGuiObject(chosenSkill)
-                            task.wait(0.18)
-                            if not bowCache.active and not dodgeCache.active then
-                                selectEnemyTarget(menuState.gui)
-                            end
-                            task.wait(0.25)
-                        end
+            if codeSuccess then
+                task.wait(0.4)
+            else
+                local menuState = scanCombatMenu()
+                if menuState then
+                    if menuState.hasBluePoints and menuState.skillsBtn then
+                        triggerGuiObject(menuState.skillsBtn)
+                        task.wait(0.22)
 
                         if not bowCache.active and not dodgeCache.active then
-                            local afterCheck = scanCombatMenu()
-                            if afterCheck and afterCheck.attackBtn then
-                                executeBasicAttack(afterCheck)
+                            local skillOptions = getCenterPanelOptions(menuState.gui, menuState.currentEN)
+                            if #skillOptions > 0 then
+                                local chosenSkill = skillOptions[math.random(1, #skillOptions)]
+                                triggerGuiObject(chosenSkill)
+                                task.wait(0.18)
+                                if not bowCache.active and not dodgeCache.active then
+                                    selectEnemyTarget(menuState.gui)
+                                end
+                                task.wait(0.25)
+                            end
+
+                            if not bowCache.active and not dodgeCache.active then
+                                local afterCheck = scanCombatMenu()
+                                if afterCheck and afterCheck.attackBtn then
+                                    executeBasicAttack(afterCheck)
+                                end
                             end
                         end
+                    elseif menuState.attackBtn then
+                        executeBasicAttack(menuState)
                     end
-                elseif menuState.attackBtn then
-                    executeBasicAttack(menuState)
-                end
 
-                task.wait(0.45)
-            else
-                task.wait(0.25)
+                    task.wait(0.45)
+                else
+                    task.wait(0.25)
+                end
             end
         else
             task.wait(0.15)
@@ -1072,7 +1342,7 @@ createToggle(
 )
 
 createToggle(
-    "🎯 Auto Bow (Perfect Hit)",
+    "🎯 Auto Minigame (Bow / All Classes)",
     false,
     function(state)
         autoBowEnabled = state

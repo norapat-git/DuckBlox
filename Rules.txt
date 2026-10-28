@@ -1,50 +1,1385 @@
-local CombatReactionClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatReactionClient)
--- Members: PlayHeldItemTransition (function), _updateTauntMarkers (function), _retireTrack (function), _destroySylph (function), StopBattleStance (function), PlayWarriorAttack (function), PlaySlimeBall (function), _ensureBattleStance (function), PlayDaggerThrowAnimation (function), PlayWarriorQTEFailure (function), _playPouchDraw (function), Clear (function), PlayTimedBlock (function), EnsureBattleStance (function), StartBattleStance (function), PlayWarriorSkill (function), PlayDaggerThrow (function), SetBattle (function), ShowDamageIndicator (function), PlayMeditate (function), PlayAngelicBlessing (function), PlayWarriorPosePreview (function), _stopHeldItemPose (function), _finishTransientTrack (function), PlayDaggerAttack (function), _summonSylph (function), __index (table), new (function), Destroy (function), PlayUnarmedAttack (function), _playBasicAttack (function), EnsureWarriorGuard (function), PlayHit (function), PlayDodge (function), StartSatchel (function), _updateSylphs (function), StopWarriorGuard (function), _recoverDaggerThrow (function), PlayUnarmedImpact (function), StartWarriorGuard (function), StopSatchel (function), IsBattleStancePlaying (function), PlaySylphSupport (function), PlayStatusApplied (function)
+local GameConfig = require(ReplicatedStorage.PlatformBattles.Shared.GameConfig)
+Members: HeldItemTransitions (table), TierMastery (table), MaxMasteryLevel (number), SchemaVersion (number), CombatAudio (table), ServerDirectory (table), RenameScroll (table), ForestBattleNodes (table), CombatMusic (table), PositionSaving (table), CharacterAppearance (table), CharacterCreation (table), SlimeEvent (table), Titles (table), Menu (table), Moderators (table), GetXPNeeded (function), TalentPassives (table), StatAllocation (table), WorldZonePresentation (table), PixelBattles (table), ProgressionAudio (table), Credits (table), Fatebrand (table), TutorialEnabled (boolean), TierOrder (table), SoulEssence (table), LootRateCap (number), PrivateRuns (table), DialogueAudio (table), GameTitle (string), RobuxShop (table), GetSoulMasterMinimumLevel (function), MaxLevel (number), RacialPassives (table), ClassOrder (table), GetMasteryXPNeeded (function), StatusInfo (table), SecretBosses (table), Zones (table), ZoneOrder (table), SoulWeb (table), QuestBoard (table), Items (table), LootRateScale (number), SpawnArrival (table), Movement (table), GetBuildBonuses (function), Gifts (table), SkillTraining (table), GetSoulBranchRequirement (function), GetSoulNodeCost (function), Trinkets (table), RacialSkills (table), RenewalCrystal (table), PixelOnly (boolean), RaceScroll (table), Save (table), Gear (table), Enemies (table), RunSupplies (table), Balance (table), GetWeaponType (function), GetTierForMastery (function), Classes (table), GoblinMerchant (table), LegacyWorldEncounters (boolean), CombatAnimations (table), ClassStatOf (function), CaveDread (table), SylphCompanion (table), Knowledge (table), Encounter (table), WarriorBladeTiming (table), TheLight (table), Admin (table), Blacksmith (table), NPCs (table), ThiefSlash (table), Gate (table), WorldEvents (table), CharacterSlots (table), Lives (table), TitleById (table)
 
-local CombatAudience = require(ReplicatedStorage.PlatformBattles.Shared.CombatAudience)
--- Members: Radius (number), CanObserve (function), IsUserId (function)
+local AppearanceUtil = require(ReplicatedStorage.PlatformBattles.Shared.AppearanceUtil)
+Members: ApplyRaceFeatures (function), GetSlimeColor (function), ApplyToHumanoid (function), Resolve (function), AvatarHairAttribute (string), GetAvatarHair (function)
 
-local CombatRecovery = require(ReplicatedStorage.PlatformBattles.Shared.CombatRecovery)
--- Members: FoeFraction (function), Health (function), Checkpoint (function), HeroFraction (function), Apply (function)
+local SlimeVariants = require(ReplicatedStorage.PlatformBattles.Shared.SlimeVariants)
+Members: Color (function), Normalize (function), Roll (function)
 
-local CombatDamageRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatDamageRules)
--- Members: HitBudget (function), Mitigated (function), HeroHitCap (function)
+local ClassTraining = require(ReplicatedStorage.PlatformBattles.Shared.ClassTraining)
+Members: Purchase (function), GetStatus (function), CombatTrainingClass (function), RequiredMastery (function)
 
-local CombatFeelRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatFeelRules)
--- Members: ImpactDelay (function), Colors (table), Kick (function), Style (function), Impact (function)
+local EquipmentSlots = require(ReplicatedStorage.PlatformBattles.Shared.EquipmentSlots)
+Members: CanWearArmor (function), CanUseTorch (function), Normalize (function), Toggle (function), GrantStarterTorch (function), Field (function)
 
-local GearCombatBudget = require(ReplicatedStorage.PlatformBattles.Shared.GearCombatBudget)
--- Members: PinCooldown (number), KillEnergy (number), TurnHealing (number), ActionHealing (number), ControlAvailable (function), EnergyRefund (number), Healing (function), PassiveHealing (function), BeginActorTurn (function), Turn (function), PassiveRecovery (function), PassiveAction (number), Energy (function), PassiveTurn (number)
+local CraftingRules = require(ReplicatedStorage.PlatformBattles.Shared.CraftingRules)
+Members: EquippedEffects (function), IsRecipeUnlocked (function), Describe (function), Reconcile (function), QualityHunterChance (number), StatValue (function), QualityOdds (function), Roll (function), MaxUpgrade (number), StatNames (table), IsForgeRecipe (function), UpgradeStep (number), MaximumItems (number)
 
-local PetCombatRules = require(ReplicatedStorage.PlatformBattles.Shared.PetCombatRules)
--- Members: Fortify (function), BeginRound (function)
+local ForgeCatalog = require(ReplicatedStorage.PlatformBattles.Shared.ForgeCatalog)
+Members: Items (table), Recipes (table)
 
-local CombatReactionClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatReactionClient)
--- Members: PlayHeldItemTransition (function), _updateTauntMarkers (function), _retireTrack (function), _destroySylph (function), StopBattleStance (function), PlayWarriorAttack (function), PlaySlimeBall (function), _ensureBattleStance (function), PlayDaggerThrowAnimation (function), PlayWarriorQTEFailure (function), _playPouchDraw (function), Clear (function), PlayTimedBlock (function), EnsureBattleStance (function), StartBattleStance (function), PlayWarriorSkill (function), PlayDaggerThrow (function), SetBattle (function), ShowDamageIndicator (function), PlayMeditate (function), PlayAngelicBlessing (function), PlayWarriorPosePreview (function), _stopHeldItemPose (function), _finishTransientTrack (function), PlayDaggerAttack (function), _summonSylph (function), __index (table), new (function), Destroy (function), PlayUnarmedAttack (function), _playBasicAttack (function), EnsureWarriorGuard (function), PlayHit (function), PlayDodge (function), StartSatchel (function), _updateSylphs (function), StopWarriorGuard (function), _recoverDaggerThrow (function), PlayUnarmedImpact (function), StartWarriorGuard (function), StopSatchel (function), IsBattleStancePlaying (function), PlaySylphSupport (function), PlayStatusApplied (function)
+local QualityHunterPolicy = require(ReplicatedStorage.PlatformBattles.Shared.QualityHunterPolicy)
+Members: State (function), Resolve (function), Restricted (function), Owns (function)
 
+local StaffMountGeometry = require(ReplicatedStorage.PlatformBattles.Shared.StaffMountGeometry)
+Members: Plan (function)
+
+local FallSafety = require(ReplicatedStorage.PlatformBattles.Shared.FallSafety)
+Members: Damage (function), CanDetachJoint (function)
+
+local PlayerAvailability = require(ReplicatedStorage.PlatformBattles.Shared.PlayerAvailability)
+Members: CanExplore (function)
+
+local BattleRoster = require(ReplicatedStorage.PlatformBattles.Shared.BattleRoster)
+Members: Detach (function), Find (function), HasOtherLiving (function)
+
+local StaffBasicAttacks = require(ReplicatedStorage.PlatformBattles.Shared.StaffBasicAttacks)
+Members: ChargeCount (function), DrainHealing (function), Apply (function), UsesLegacyProjectiles (function), Get (function)
+
+local MagicVisualScale = require(ReplicatedStorage.PlatformBattles.Shared.MagicVisualScale)
+Members: Dimensions (function), FromPower (function), Power (function)
+
+local MageRules = require(ReplicatedStorage.PlatformBattles.Shared.MageRules)
+Members: BeginControlTurn (function), MaxIncomingReduction (number), ShieldShare (number), BeginGuard (function), EnsureStarterLesson (function), GuardCost (function), MaxGuardBlockBonus (number), Weakness (number), IsMage (function), TryGuard (function), WeaknessTurns (number), ConsumeSense (function), SenseBonus (number), HasLegacyLesson (function), AdvanceStatuses (function), SenseMultiplier (function), Absorb (function)
+
+local ScrollSpells = require(ReplicatedStorage.PlatformBattles.Shared.ScrollSpells)
+Members: DefenseMultiplier (function), Activate (function), Active (function), Order (table), CanCast (function), RarityOrder (table), DamageMultiplier (function), Sync (function), Dodge (function), AdvanceRound (function), MeteorTargets (function), Actions (table), Items (table)
+
+local PebbleThrowVisual = require(ReplicatedStorage.PlatformBattles.Shared.PebbleThrowVisual)
+Members: ImpactAt (number), MaxPower (number), Sample (function), Smooth (function), HoverOffset (function), LiftSeconds (number), BaseDiameter (number), MaxDiameter (number), Count (number), Lifetime (number), Diameter (function), LaunchAt (number), CastSeconds (number), BasePower (number)
+
+local MeteorVisual = require(ReplicatedStorage.PlatformBattles.Shared.MeteorVisual)
+Members: ImpactAt (number), FallVolume (function), ReturnAt (number), ReturnEnds (number), FlightStarts (number), PreludeSeconds (number), WarningScale (function), ApproachReady (number), Lifetime (number), Prelude (function), ApproachAt (number), CastSeconds (number), HeroScale (number), WarningShake (function), Sample (function), Shake (function), Release (function), PreludeCount (number), FollowAt (number), SkyReady (number)
+
+local MageQTE = require(ReplicatedStorage.PlatformBattles.Shared.MageQTE)
+Members: CustomPresentation (function), Requires (function), Apply (function)
+
+local IcicleVisual = require(ReplicatedStorage.PlatformBattles.Shared.IcicleVisual)
+Members: ImpactAt (number), Radius (number), SuccessCount (function), Tail (number), ChargeSample (function), Count (number), Lifetime (number), Sample (function), Tip (number), Shoulder (number), CastSeconds (number)
+
+local BlizzardFogRules = require(ReplicatedStorage.PlatformBattles.Shared.BlizzardFogRules)
+Members: Follow (function), Radius (function), MaxVisibleZones (number), AudioVolume (function), SoundId (number), ParticleTailSeconds (number), Visibility (function), FadeSeconds (number)
+
+local MageBarrierVisual = require(ReplicatedStorage.PlatformBattles.Shared.MageBarrierVisual)
+Members: Envelope (function), BreakDelay (number), Hit (function), HitDuration (number), CollapseDuration (number)
+
+local WarriorRules = require(ReplicatedStorage.PlatformBattles.Shared.WarriorRules)
+Members: Taunt (function), MigrateLessons (function), BashDuration (number), ForcedTarget (function), BashImpactAt (number), IsWarrior (function), TakeDefenseMultiplier (function), BeginRound (function), DefenseBonus (number)
+
+local TauntMarkers = require(ReplicatedStorage.PlatformBattles.Shared.TauntMarkers)
+Members: Targets (function)
+
+local ForestMobRules = require(ReplicatedStorage.PlatformBattles.Shared.ForestMobRules)
+Members: NightOnly (table), Roster (function), Pool (table), HealTarget (function), IsNight (function), SupportTarget (function), Timing (table), EncounterPool (function)
+
+local ForestMobVisual = require(ReplicatedStorage.PlatformBattles.Shared.ForestMobVisual)
+Members: Sample (function)
+
+local EnemyFormation = require(ReplicatedStorage.PlatformBattles.Shared.EnemyFormation)
+Members: BodyGap (number), Radius (function), Offsets (function)
+
+local GoblinAnimation = require(ReplicatedStorage.PlatformBattles.Shared.GoblinAnimation)
+Members: Sample (function), Channels (table)
 
 local DefenseTiming = require(ReplicatedStorage.PlatformBattles.Shared.DefenseTiming)
--- Members: BarrageDefinition (function), Eligible (function), FocusMaximum (number), FocusTimePerPoint (number), BarrageJitter (number), SpeedEaseHalf (number), MaxLatencyCredit (number), Good (number), BarrageBase (number), Grace (number), MinHeavyPerfect (number), BarragePerStrike (number), Definition (function), MinGood (number), BarrageFirst (number), MinPerfect (number), StreakShrink (number), BarrageMaxPresses (number), LeadIn (number), SpeedEase (function), Window (function), FocusEase (function), StreakFloor (number), StreakMax (number), BlockMultiplier (number), Damage (function), Perfect (number), BarrageOutcome (function), BarrageFinish (function), BarragePress (function), BarragePressure (number), Submit (function), StreakGoodShrink (number), BarrageLast (number), HeavyDodgeScale (number), Grade (function), StreakGoodFloor (number), PressTime (function), LiveEligible (function), Duration (number), FocusWindowPerPoint (number), SpeedEaseMax (number), StreakSpeed (number), HitOutcome (function), Position (function)
+Members: BarrageDefinition (function), Eligible (function), FocusMaximum (number), FocusTimePerPoint (number), BarrageJitter (number), SpeedEaseHalf (number), MaxLatencyCredit (number), Good (number), BarrageBase (number), Grace (number), MinHeavyPerfect (number), BarragePerStrike (number), Definition (function), MinGood (number), BarrageFirst (number), MinPerfect (number), StreakShrink (number), BarrageMaxPresses (number), LeadIn (number), SpeedEase (function), Window (function), FocusEase (function), StreakFloor (number), StreakMax (number), BlockMultiplier (number), Damage (function), Perfect (number), BarrageOutcome (function), BarrageFinish (function), BarragePress (function), BarragePressure (number), Submit (function), StreakGoodShrink (number), BarrageLast (number), HeavyDodgeScale (number), Grade (function), StreakGoodFloor (number), PressTime (function), LiveEligible (function), Duration (number), FocusWindowPerPoint (number), SpeedEaseMax (number), StreakSpeed (number), HitOutcome (function), Position (function)
 
 local DefenseTimingVisual = require(ReplicatedStorage.PlatformBattles.Shared.DefenseTimingVisual)
--- Members: Radius (function), MinimumRadius (number), TargetRadius (number), Travel (number), Window (function)
+Members: Radius (function), MinimumRadius (number), TargetRadius (number), Travel (number), Window (function)
 
-local DefenseTimingClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DefenseTimingClient)
--- Members: Destroy (function), Cancel (function), _refreshHint (function), Start (function), Press (function), _setRing (function), Resolve (function), __index (table), new (function)
+local ThiefRules = require(ReplicatedStorage.PlatformBattles.Shared.ThiefRules)
+Members: CritChance (function), MigrateLessons (function), CritBonus (number), MovementSpeed (function), IsSkill (function), RunMultiplier (number), Skills (table), SprintHeld (function), IsThief (function)
 
-local ArcaneTimingVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ArcaneTimingVisual)
--- Members: Phase (function), Diameter (function)
+local DaggerThrowTiming = require(ReplicatedStorage.PlatformBattles.Shared.DaggerThrowTiming)
+Members: Schedule (function), LandingHold (number), StartTolerance (number), Duration (function), IdleBlend (number), Recovery (function)
+
+local DeathReviveRules = require(ReplicatedStorage.PlatformBattles.Shared.DeathReviveRules)
+Members: CanRevive (function), Health (function), ReviveGatherSeconds (number), ProductId (number), RevealSeconds (number), Destination (function), SelectionMusicId (string), RespawnFadeSeconds (number)
+
+local KingSpawnRules = require(ReplicatedStorage.PlatformBattles.Shared.KingSpawnRules)
+Members: Radius (function), AreaOffsets (function), GroundProbe (function), NodeOffsets (function), WithinLeash (function), SameFloor (function), Supports (function)
+
+local SoulPresentation = require(ReplicatedStorage.PlatformBattles.Shared.SoulPresentation)
+Members: ShotScore (function), Layout (function), HeadingDrift (function), Blend (function)
+
+local LiveVitals = require(ReplicatedStorage.PlatformBattles.Shared.LiveVitals)
+Members: Health (function)
+
+local CombatAudience = require(ReplicatedStorage.PlatformBattles.Shared.CombatAudience)
+Members: Radius (number), CanObserve (function), IsUserId (function)
+
+local BattleJoinRules = require(ReplicatedStorage.PlatformBattles.Shared.BattleJoinRules)
+Members: ReserveSlot (function), CombatClass (function)
+
+local GroupLimits = require(ReplicatedStorage.PlatformBattles.Shared.GroupLimits)
+Members: Resolve (function), Maximum (number)
+
+local CombatCameraRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatCameraRules)
+Members: Pullback (function), Overview (function), CanReframe (function)
+
+local ActionPresentation = require(ReplicatedStorage.PlatformBattles.Shared.ActionPresentation)
+Members: Resolve (function)
 
 local DodgeRules = require(ReplicatedStorage.PlatformBattles.Shared.DodgeRules)
--- Members: Raw (function), SpeedPerCapPoint (number), FullAnimation (function), MaximumReduction (number), MaximumWithSpeed (number), Roll (function), Cap (function), Chances (function), OverflowReduction (number), MaximumAutomatic (number), PlayerStat (function), OverflowDamageReduction (function)
+Members: Raw (function), SpeedPerCapPoint (number), FullAnimation (function), MaximumReduction (number), MaximumWithSpeed (number), Roll (function), Cap (function), Chances (function), OverflowReduction (number), MaximumAutomatic (number), PlayerStat (function), OverflowDamageReduction (function)
+
+local FistRules = require(ReplicatedStorage.PlatformBattles.Shared.FistRules)
+Members: IsAttack (function), MigrateLessons (function), HasLesson (function), DamageBonus (number), OniBurnBonus (number), IsActive (function), ShuraBurnBonus (number), IsMelee (function), IsSuperMove (function), TargetMultiplier (function), Skills (table), DamageMultiplier (function), Timelines (table)
+
+local FistVisual = require(ReplicatedStorage.PlatformBattles.Shared.FistVisual)
+Members: Camera (function), CameraPose (function), Animation (function), CircleHandle (number), Ring (function), Smooth (function)
+
+local AvatarHair = require(ReplicatedStorage.PlatformBattles.Shared.AvatarHair)
+Members: ForRace (function), Attribute (string), Filter (function)
+
+local GateRules = require(ReplicatedStorage.PlatformBattles.Shared.GateRules)
+Members: Scale (function), TravelCover (number), TeleportAt (number), Normalize (function), LimitInput (function), Resolve (function), MaximumInput (number), RevealAt (number)
+
+local CombatRecovery = require(ReplicatedStorage.PlatformBattles.Shared.CombatRecovery)
+Members: FoeFraction (function), Health (function), Checkpoint (function), HeroFraction (function), Apply (function)
+
+local EnergyRules = require(ReplicatedStorage.PlatformBattles.Shared.EnergyRules)
+Members: RestoreUnits (function), PerRound (number), ShieldPerEnergy (number), Cost (function), BaseCapacity (number), StartingAmount (function), Restore (function), Starting (number), CapacityStartBonus (function), Capacity (function), Units (function), Version (number), MeditateGain (number), CapacityPerStartBonus (number), Meditate (function), BeginRound (function), MaxCapacityStartBonus (number)
+
+local TentacleVisual = require(ReplicatedStorage.PlatformBattles.Shared.TentacleVisual)
+Members: Shockwave (function), ScaleCoordinate (function), SlamScale (number), Timing (table), Debris (function), HasStrikeRibbon (function), BurrowTiming (table), Sample (function), Burrow (function), EmergeDistance (function), SlamContactHold (number), GroundPitch (function), SlamRingRadius (number)
+
+local SlimeKingRules = require(ReplicatedStorage.PlatformBattles.Shared.SlimeKingRules)
+Members: CanTransform (function), SecondActions (table), SummonSlots (function), FormScale (number), TransformDuration (number), FirstActions (table), WeakenSummon (function), EnterSecondForm (function), Actions (function), Timing (table)
+
+local SlimeKingVisual = require(ReplicatedStorage.PlatformBattles.Shared.SlimeKingVisual)
+Members: Shake (function), ImpactAge (function), Sample (function)
+
+local LightPassageRules = require(ReplicatedStorage.PlatformBattles.Shared.LightPassageRules)
+Members: NeedsPassage (function), ShouldRoute (function), Complete (function)
+
+local CharacterLifecycle = require(ReplicatedStorage.PlatformBattles.Shared.CharacterLifecycle)
+Members: Wipe (function), EditError (function)
+
+local CursedSkyRules = require(ReplicatedStorage.PlatformBattles.Shared.CursedSkyRules)
+Members: EventId (string), Active (function), EncounterFlag (function), Timing (table), Enemies (table), ZombieActions (table), AttackMultiplier (number), GhostActions (table), HealthMultiplier (number), Apply (function)
+
+local CursedMobVisual = require(ReplicatedStorage.PlatformBattles.Shared.CursedMobVisual)
+Members: Sample (function)
+
+local QuestBoardRules = require(ReplicatedStorage.PlatformBattles.Shared.QuestBoardRules)
+Members: Current (function), RewardText (function), Available (function), KillCounts (function), Postings (function), ListIds (function), MatchesEnemy (function)
+
+local QuestBoardCatalog = require(ReplicatedStorage.PlatformBattles.Shared.QuestBoardCatalog)
+Members: Order (table), CurrentEnemies (table), Definitions (table)
+
+local QuestNotice = require(ReplicatedStorage.PlatformBattles.Shared.QuestNotice)
+Members: Mount (function)
+
+local QuestBurnVisual = require(ReplicatedStorage.PlatformBattles.Shared.QuestBurnVisual)
+Members: Columns (number), IgniteAt (number), Duration (number), Sample (function), BurnSeconds (number)
+
+local WorldAnnouncementText = require(ReplicatedStorage.PlatformBattles.Shared.WorldAnnouncementText)
+Members: Format (function)
+
+local CombatDamageRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatDamageRules)
+Members: HitBudget (function), Mitigated (function), HeroHitCap (function)
+
+local NecromancerRules = require(ReplicatedStorage.PlatformBattles.Shared.NecromancerRules)
+Members: HasSkill (function), BaseClass (string), Active (function), Curse (function), CompanionActor (function), Immune (function), Tier (string), Learned (function), Revive (function), Learn (function), DamageMultiplier (function), Id (string), IsSkill (function), CanRevive (function), Authorized (function), ConsumeCurse (function), LessonMask (function), Skills (table), Companion (table), Public (boolean)
+
+local SummonFormation = require(ReplicatedStorage.PlatformBattles.Shared.SummonFormation)
+Members: Gap (number), Choose (function)
+
+local UndeadRiseVisual = require(ReplicatedStorage.PlatformBattles.Shared.UndeadRiseVisual)
+Members: Apply (function), Duration (number)
+
+local MageCastRouting = require(ReplicatedStorage.PlatformBattles.Shared.MageCastRouting)
+Members: AnimationId (function), Resolve (function)
+
+local CombatFeelRules = require(ReplicatedStorage.PlatformBattles.Shared.CombatFeelRules)
+Members: ImpactDelay (function), Colors (table), Kick (function), Style (function), Impact (function)
+
+local ElementalScrollVisual = require(ReplicatedStorage.PlatformBattles.Shared.ElementalScrollVisual)
+Members: Definitions (table), AcceptChargeStep (function), FireballDiameter (function), Sample (function), FireSurface (function), RetainedFireballDiameter (function)
+
+local MobDeathVisual = require(ReplicatedStorage.PlatformBattles.Shared.MobDeathVisual)
+Members: Style (function), MaxActive (number), Sample (function), Retention (number), Duration (number), Tag (string)
+
+local AnimationTransitionRules = require(ReplicatedStorage.PlatformBattles.Shared.AnimationTransitionRules)
+Members: StaffWeight (function), NeedsInstall (function), ConfigurationKey (function), BlendAlpha (function)
+
+local ExplorationMobilityRules = require(ReplicatedStorage.PlatformBattles.Shared.ExplorationMobilityRules)
+Members: Envelope (function), DashMomentumFactor (number), CanDoubleJump (function), JumpBurst (function), DashDuration (number), CanDash (function), DashMaxSpeed (number), DashSpeed (number), Finite (function), SlimeJumpSpeed (number), DashAnimationId (number), JumpSpeed (number), DashCooldown (number)
+
+local DesertPresentation = require(ReplicatedStorage.PlatformBattles.Shared.DesertPresentation)
+Members: ExplorationMusicId (string), BattleMusicId (string), IsZone (function), SandRate (function), BattleMusic (function)
+
+local DesertBoundaryRules = require(ReplicatedStorage.PlatformBattles.Shared.DesertBoundaryRules)
+Members: MaxColumns (number), Layers (number), Columns (function), Spacing (number), Opacity (function), Range (number)
+
+local DesertMobRules = require(ReplicatedStorage.PlatformBattles.Shared.DesertMobRules)
+Members: Roster (function), Pool (table), Chance (number), Timing (table), Enemies (table)
+
+local NecromancerTraining = require(ReplicatedStorage.PlatformBattles.Shared.NecromancerTraining)
+Members: Eligible (function), Questions (function)
+
+local ForgeLootCatalog = require(ReplicatedStorage.PlatformBattles.Shared.ForgeLootCatalog)
+Members: Items (table), Apply (function)
+
+local LootBalance = require(ReplicatedStorage.PlatformBattles.Shared.LootBalance)
+Members: Rarities (table), ApplyRarities (function), IsLegacy (function), LegacyCategories (table), StripLegacy (function), Apply (function)
+
+local MageSuperRules = require(ReplicatedStorage.PlatformBattles.Shared.MageSuperRules)
+Members: HasSkill (function), Active (function), Order (table), ReflectTarget (function), AdvanceRound (function), Activate (function), Classes (table), Sync (function), Authorized (function), FieldActive (function), Opening (function), Skills (table), PickTarget (function), Public (boolean)
+
+local ReversalArenaRules = require(ReplicatedStorage.PlatformBattles.Shared.ReversalArenaRules)
+Members: RippleCount (number), Radius (function), Ripple (function), RippleSegments (number), Visibility (function), Follow (function), MaxVisible (number), FadeSeconds (number)
+
+local GoblinMarketRules = require(ReplicatedStorage.PlatformBattles.Shared.GoblinMarketRules)
+Members: Purchase (function), BuildPool (function), SessionSeconds (number), Roll (function), BaseStats (function), MaximumDistance (number), RestockSeconds (number)
+
+local EyeEnemy = require(ReplicatedStorage.PlatformBattles.Shared.EyeEnemy)
+Members: souls (number), magic (number), baseLevel (number), speed (number), actions (table), defense (number), drops (table), lore (string), id (string), potionDropChance (number), adminOnly (boolean), masteryXp (number), gold (number), xp (number), name (string), maxHp (number), dodge (number), crit (number), shape (string), attack (number)
+
+local EyeVisual = require(ReplicatedStorage.PlatformBattles.Shared.EyeVisual)
+Members: Stalk (function), Timing (table), Sample (function)
+
+local CavePresentation = require(ReplicatedStorage.PlatformBattles.Shared.CavePresentation)
+Members: DeepProfile (function), IsPortal (function), ResolveProfile (function), MatchesDreadZone (function), Priority (function), PortalProfile (function), IsParent (function)
+
+local DeepCaveRules = require(ReplicatedStorage.PlatformBattles.Shared.DeepCaveRules)
+Members: ContainsPresentation (function), Pool (table), IsZone (function), Timing (table), Roster (function), Chance (number), Contains (function), Allowed (function), Caveling (table)
+
+local CavelingVisual = require(ReplicatedStorage.PlatformBattles.Shared.CavelingVisual)
+Members: Sample (function)
+
+local DaggerSuperRules = require(ReplicatedStorage.PlatformBattles.Shared.DaggerSuperRules)
+Members: IsAttack (function), Spring (function), Active (function), Order (table), Traps (function), MaxTraps (number), Timelines (table), Plant (function), DamageMultiplier (function), Validate (function), TargetState (function), Classes (table), AfterAction (function), Authorized (function), AlwaysCrit (function), HasSkill (function), Skills (table), Marked (function), Public (boolean)
+
+local DaggerSuperVisual = require(ReplicatedStorage.PlatformBattles.Shared.DaggerSuperVisual)
+Members: Trap (function), Vanish (function), Sample (function), Ghost (function), Camera (function), Cut (function), Smooth (function)
+
+local WarriorSuperRules = require(ReplicatedStorage.PlatformBattles.Shared.WarriorSuperRules)
+Members: HasSkill (function), AfterAction (function), Active (function), Order (table), OnHit (function), Validate (function), Incoming (function), Classes (table), Outgoing (function), Public (boolean), IsAttack (function), Authorized (function), Skills (table), Equipped (function), Timelines (table)
+
+local WarriorSuperVisual = require(ReplicatedStorage.PlatformBattles.Shared.WarriorSuperVisual)
+Members: Cut (function), Sample (function), Smooth (function)
+
+local WarriorSuperChoreography = require(ReplicatedStorage.PlatformBattles.Shared.WarriorSuperChoreography)
+Members: Style (function), Sample (function), Frames (table), Smooth (function)
+
+local PixelUI = require(ReplicatedStorage.PlatformBattles.Shared.PixelUI)
+Members: MonoFont (Font), Label (function), Skin (function), Button (function), ReadableSize (function), Panel (function), Num (table), DescriptionReader (function), Slot (function), PixelFont (Font), PIXEL_FONT_MAX_CHARS (number), Bevel (function), Fit (function), Colors (table), PIXEL_FONT_MIN_SIZE (number), Make (function), ApplyFont (function), MIN_READABLE (number), Bar (function)
+
+local GrimoireUI = require(ReplicatedStorage.PlatformBattles.Shared.GrimoireUI)
+Members: Panel (function), Rarity (table), Label (function), RarityColor (function), Tab (function), Backdrop (function), TextBox (function), Fonts (table), Slot (function), Colors (table), SkinButton (function), Button (function), Make (function), Rule (function), Bar (function)
+
+local PixelKit = require(ReplicatedStorage.PlatformBattles.Shared.PixelKit)
+Members: Outline (function), Tab (function), Rarity (table), Label (function), RarityColor (function), ApplyFont (function), Backdrop (function), Bevel (function), TextBox (function), Panel (function), Colors (table), Slot (function), Button (function), Make (function), Rule (function), Bar (function)
+
+local SpriteLooks = require(ReplicatedStorage.PlatformBattles.Shared.SpriteLooks)
+Members: Backs (table), HandCol (number), HairColorById (table), Legs (table), Torso (table), FeatureColors (table), LegsRow (number), HairUnderHatRow (number), Head (table), Width (number), PackColors (table), Fields (table), HandRow (number), SlimeColors (table), HairById (table), Hats (table), DefaultCape (Color3), Races (table), OutfitById (table), SkinById (table), ValidateRequest (function), HatById (table), Normalize (function), Options (function), Skins (table), SkinsForRace (function), HairColors (table), BackById (table), FieldOrder (table), RaceRules (function), EyesById (table), Default (function), Features (table), Height (number), Eyes (table), Outfits (table), Hair (table)
+
+local VillageConfig = require(ReplicatedStorage.PlatformBattles.Shared.VillageConfig)
+Members: OathStats (table), OathById (table), MatchRecipe (function), Recipes (table), BuildingById (table), OathSlots (function), RemovedTrainingHallGold (number), CastleMusicId (number), MaxLevel (number), PotionSellPrice (function), DailyGoldPerLevel (number), DailyGold (function), Ingredients (table), Oaths (table), PerkCost (function), PerkById (table), UpgradeCost (function), Buildings (table), DayNumber (function), CastleMusicVolume (number), Daily (table), Bonuses (function), Perks (table), NextBuild (function), NextPerk (function), StartActs (function), BuildTime (function), StartLock (function), Resolve (function), DailyState (function), PortalSoundId (number), PotionPrice (function), ReforgeGold (number), CanStartAt (function), OathStatText (function), CanUnlockOath (function), BlightEra (function), MaxStartAct (function), CauldronSlots (number), PortalCost (number), OathStatFx (function), CanUpgradeOath (function), PotionCap (function), IsSworn (function), MigrateStoryProgress (function), SwornSet (function), StoryActsCleared (function), Normalize (function), StartLockText (function), IsIngredient (table), RecipeById (table), DailyGoldScale (function), ReforgeMaterials (table), PerkCap (function), BuildSeconds (table), BlessingPrice (function), PowerSet (function), OathRankCost (function), OathRank (function), HurryGold (number), OathMaxRank (number), HurryCost (function)
+
+local RunConfig = require(ReplicatedStorage.PlatformBattles.Shared.RunConfig)
+Members: ClassChoices (table), RetreatMinFloor (number), MysteryGold (number), Torment (table), TreasureGold (number), DefenseActShrink (number), RetreatGuaranteed (number), NodeTypes (table), EventFlavor (table), VoteSeconds (number), ClassWeapons (table), EliteRewards (number), SecretBosses (table), EventSeconds (number), RollChoices (function), Difficulty (function), Scenarios (table), Expedition (table), MiniBosses (table), BossTitles (table), RollEvents (function), SuperClassAct (number), Arcs (table), ClassRatings (table), TormentDifficulty (function), ActScale (table), Floors (number), ElitePower (number), Halloween (table), MultiplierText (function), MiniBossRewards (number), EliteCount (number), StoryAct (number), Events (table), PickScenario (function), SecretBossRewards (table), SagaSecretBosses (table), ActMultipliers (function), BossHp (number), CardCount (number), Difficulties (table), EliteHp (number), RestHeal (number), RetreatChance (number), DifficultyById (table), ClassDifficulty (table), LandFor (function), Land (function), DefenseWindow (table), Acts (table), DefenseWindowScale (function)
+
+local GearConfig = require(ReplicatedStorage.PlatformBattles.Shared.GearConfig)
+Members: Whetstones (table), HoneGold (function), SellPrice (function), DungeonLoot (function), GoldSoftCapScale (number), PercentagePlusStep (number), HoneSlipChance (number), RaidTokenText (function), Peddler (table), PieceCaps (table), SetDisplayNames (table), AffixVersion (number), IsAttuned (function), Effects (function), RarityOrder (table), GiveawayScale (function), SlotKind (table), HoneChance (function), CanSell (function), StarterOutfits (table), Slots (table), StatOrder (table), HoneSlipFrom (number), SetSlots (table), ReconcileBag (function), PlusStep (number), AppearanceKey (function), MaxPlus (number), GiveawayOutfits (table), CanWear (function), NormalizeInstance (function), Items (table), PeddlerWindow (function), SellValue (table), MythicSellMultiplier (number), IsTormentLoot (function), DungeonTag (function), RaidShopFor (function), SetName (function), LootRateCap (number), DisplayStats (function), Powers (function), VanitySlots (table), RaidPrice (function), VanityOrder (table), ExpeditionTag (function), KeepsName (function), ScrollMoves (table), RaidLoot (table), RaidShopOrder (table), RaidShops (table), BagLimit (number), GoldSoftCap (function), DungeonGear (table), Reconcile (function), Appearance (function), PlusScale (function), ExpeditionGear (table), WeaponRecipe (function), HoneCap (function), BlightAct (function), NormalizeVanity (function), VanityHideSlots (table), VanityVisibility (table), MeetsAuctionRarity (function), GiveawayFullLevel (number), BlueprintWeapons (table), RaidLootFor (function), SetCount (function), FullSet (function), SetBonuses (table), StatTuning (table), SlotsFor (function), RaidLabel (function), WhetstoneOrder (table), Current (function), ClassNames (table), Describe (function), StarterSet (function), Rarities (table), StatValueText (function), ScaleStats (function), AttunedBonus (number), StatScale (function), Worth (table), WhetstoneItems (table), WhetstoneFor (function), HoneChances (table), PowerRarities (table), GiveawayGrowth (table), DuplicateRelic (function), StarterHats (table), BuildStats (table), DungeonOnly (table), MythicBonus (number), LockEnabled (boolean), IsStarter (function), BigBagBonus (number), PieceScale (function), StatNames (table), WeaponForgeCost (table), ItemStatScale (function), Looks (table)
+
+local SuperClasses = require(ReplicatedStorage.PlatformBattles.Shared.SuperClasses)
+Members: BaseLevelForMastery (table), UltraMoves (table), Cinematic (table), AreaLoneTargetBonus (number), BaseSkillLevel (function), ByBase (table), Choices (function), Moves (table), Valid (function), MoveLevels (table), UltraSkillsLearned (function), MoveLevel (function), UltraMoveIds (table), Ultra (table), Info (table), UltraSkillCount (number), UltraPowerBonus (number), UltraStatBoost (number), IsUltra (function), Colors (table)
+
+local SkillCinematics = require(ReplicatedStorage.PlatformBattles.Shared.SkillCinematics)
+Members: Get (function), Moves (table)
+
+local TutorialRules = require(ReplicatedStorage.PlatformBattles.Shared.TutorialRules)
+Members: Classes (table), EnemyId (string), WingsByClass (table), BuildHero (function), WeaponByClass (table)
+
+local BossForms = require(ReplicatedStorage.PlatformBattles.Shared.BossForms)
+Members: Enabled (function), Defense (number), CanTransform (function), Hp (number), Enter (function), TransformDuration (number), Magic (number), Bosses (table), Has (function), Actions (function), Attack (number)
+
+local EncyclopediaRules = require(ReplicatedStorage.PlatformBattles.Shared.EncyclopediaRules)
+Members: ItemName (function), Sections (function), Drops (function), KindNames (table), Percent (function)
+
+local NumberFormat = require(ReplicatedStorage.PlatformBattles.Shared.NumberFormat)
+Members: Short (function), Frac (function), Signed (function)
+
+local UltraDrops = require(ReplicatedStorage.PlatformBattles.Shared.UltraDrops)
+Members: TomeId (function), SigilId (function), ItemDefinitions (function), All (table), UltraName (function), ByItem (table)
+
+local GuildConfig = require(ReplicatedStorage.PlatformBattles.Shared.GuildConfig)
+Members: Furniture (table), TrophyKinds (table), RaidTier (function), DonateSteps (table), RaidWeek (function), DummyTurns (number), CoreCost (function), MaxLevel (number), Tier (function), DecorMaxOwned (number), CoreOpens (function), DonateMin (number), ShopById (table), CoreStart (function), Colors (table), LevelFor (function), RaidBlocked (function), CoreOf (function), CoreReady (function), FacilityById (table), VaultTakeWaitSeconds (number), Shop (table), RaidTierRewards (function), RaidNextTier (function), CoreLock (function), RaidWeekEnds (function), RaidDayEnds (function), CoreLevel (function), DecorLimit (function), VaultItemAllowed (function), RaidBoss (function), RaidBossFor (function), RaidBosses (table), Raid (table), DonateMax (number), RaidDay (function), Core (table), FurnitureById (table), Facilities (table), VaultCategories (table), LedgerKeep (number), TrophyKeep (number), TierInfo (function), VaultMinLevel (number)
+
+local PetConfig = require(ReplicatedStorage.PlatformBattles.Shared.PetConfig)
+Members: FeedEgg (number), ChargeMax (number), FusedProgress (function), MythicIndex (number), EggRarities (table), RarityIndex (table), BattleXpShare (number), Species (table), FamilyById (table), Pounce (table), Families (table), Unlocked (function), DisplayName (function), Plan (function), SignatureEvery (number), AddXp (function), HealUrgent (number), MythicSpecies (table), OddsText (function), DamageMix (function), MythicHatchChance (number), Signature (function), ItemDefinitions (function), UsefulSpecials (function), BitePower (function), Rarities (table), SupportShare (table), OddsByRarity (function), FeedMaterial (number), FeedGear (table), PounceBites (number), XpToNext (function), FuseCost (table), EggOdds (table), AbilityOrder (table), EggShownRarity (function), Effect (function), EggId (function), BiteFloor (number), Specials (table), RollOdds (function), MaxFuseRarity (number), EggByItem (table), Abilities (table), Bite (table), Ranch (table), Bound (function), ChanceText (function), HealMaxHp (number)
+
+local JourneyConfig = require(ReplicatedStorage.PlatformBattles.Shared.JourneyConfig)
+Members: Total (number), Replaced (table), RewardSoundId (number), RewardText (function), LegacyOrders (table), Version (number), RewardParts (function), IndexById (table), VeteranActs (number), Quests (table), FinalReward (string)
+
+local TormentConfig = require(ReplicatedStorage.PlatformBattles.Shared.TormentConfig)
+Members: Afflictions (table), Valor (table), Boon (function), RankBonusTiers (number), TierGrowth (number), ReferenceAct (number), ChestGoldActs (number), RankGold (number), Id (function), RewardGrowth (number), ExpectedRank (function), FirstClearRanks (number), ValorGrowth (number), ChestValor (number), DaySeconds (number), UnlockLevel (number), Color (Color3), Day (function), RewardStart (number), SecondsToNextDay (function), Roman (function), ValorColor (Color3), QteFloorStart (number), RewardScale (function), LandKnowledge (number), OpenTiers (number), QtePressureStep (number), RankValor (number), LandFloors (number), EnemyLevel (number), UnlockActs (number), DailyGauntlet (function), EnemyScale (function), Boons (table), DailyChestBonus (number), ValorFalloff (function), RanksCost (function), Unlocked (function), DodgePassMax (number), GauntletLands (number), RankSlackTiers (number), RankMultiplier (function), StartMultiplier (number), ValorFor (function), QteFloorStep (number), QteFloorScale (function), FirstClearPaysGold (function), FalloffFloor (number), QtePressure (function), FullValorTier (function), MaxTier (function), FalloffStep (number), ChestValorFor (function), MaxRanksPerPurchase (number), SecretKnowledgeShare (function), Affliction (function), LandCount (number), CanPick (function), BoonById (table), AfflictionById (table), FirstClearValor (function), RankCost (function), ValorScale (function), Name (function), TierOf (function), DodgePassShrink (number), RankCostGrowth (number), RanksPerTier (number), ChestKnowledge (number)
+
+local TormentMutations = require(ReplicatedStorage.PlatformBattles.Shared.TormentMutations)
+Members: Enabled (boolean), ByAction (table), Color (Color3), For (function), Actions (function), Bosses (table)
+
+local HalloweenConfig = require(ReplicatedStorage.PlatformBattles.Shared.HalloweenConfig)
+Members: LevelActs (table), DullahanPactId (string), Active (function), CandyAmount (function), SelectedBracket (function), MiniBoss (table), StartsAt (number), LevelAct (function), Choices (table), ColorDark (Color3), EventFlavor (table), ScalingBrackets (table), RoleScale (function), ChestCandy (number), Costumes (table), Id (string), Difficulty (table), DullahanRace (string), Scenarios (table), Looks (table), SetBonuses (table), LineageCap (number), Land (table), ShopById (table), Zone (table), Color (Color3), Shop (table), BossTitle (table), Enemies (table), EndsAt (number), LineageMultiplier (function), RoleBudgets (table), MusicId (number), Gear (table), RefAct (function), TitleId (string), CandyColor (Color3), DifficultyFor (function), SecondsLeft (function), EndsText (string), Recommended (function), PackBudgets (table), Encounter (function), Bracket (function), LineageNotice (string), Items (table), LeftText (function), Now (function), CandyId (string), BattleCandy (table), SetBonus (table), IsDifficulty (function), LandFloors (number)
+
+local Keepsakes = require(ReplicatedStorage.PlatformBattles.Shared.Keepsakes)
+Members: Install (function), IsGear (function), Put (function), EggFamilies (table), Take (function), Text (function), IsItem (function), GearBoss (table)
+
+local RaceEvolutions = require(ReplicatedStorage.PlatformBattles.Shared.RaceEvolutions)
+Members: ItemName (function), EffectsFor (function), Costs (table), FinalAnnouncement (function), Mechanic (function), FoundToast (string), AppearanceFields (function), RevealAckSeconds (number), OpenStage (number), ItemFor (function), HeartbloodId (function), ClampStage (function), TitleName (function), Trait (function), Reliquary (table), WithStage (function), SkillAction (function), RallyId (string), ByItem (table), IsRace (function), MightByStage (table), MaxStage (number), Param (function), DormantList (function), CanEvolve (function), StageInfo (function), NextStageCost (function), Order (table), DrawStage (function), MightText (function), ActiveStage (function), Sounds (table), Capstone (function), Races (table), StageOf (function), StageText (function), BannerText (function), Title (function), StageName (function), StageNames (table), AuctionFilter (table), ItemDefinitions (function), Roman (table), AllFeatureIds (function), ItemInfo (function), ItemKinds (table), RerollWarning (function), TitleDefinitions (function), HeirloomId (function), Version (number), TitleId (function), FeaturesFor (function), Might (function), Sanitize (function), Commas (function)
+
+local StatPoints = require(ReplicatedStorage.PlatformBattles.Shared.StatPoints)
+Members: Gain (function), Summary (function), Next (function), Describe (function), Percent (function), Energy (function)
+
+local ArenaConfig = require(ReplicatedStorage.PlatformBattles.Shared.ArenaConfig)
+Members: Scale (function), StartRating (number), Season (function), DodgeCountMax (number), EdgeMax (number), DailyFights (number), Tier (function), DodgeWorth (number), SparringRaces (table), IntroSeconds (number), SparringClasses (table), GhostFactor (function), SparringNames (table), RefreshSeconds (number), Target (function), ClassShare (function), GhostMin (number), SeasonCarry (function), Tokens (table), SeasonTokens (table), SeasonEnds (function), MaxRounds (number), RawPower (function), LiveScale (function), Level (number), CritWorth (number), Day (function), Clamp (function), GhostHp (number), UnlockLevel (number), RefHit (number), Tiers (table), Expected (function), GhostPerHundred (number), LaunchSeason (number), DefenseK (number), K (number), TierById (function), GhostMax (number), LogSize (number), Live (table), SecondsToNextDay (function), Enabled (boolean), SparringK (number), EdgeLow (number), UltraShare (number), GhostDamage (number), HpScale (number), Delta (function), SeasonNumber (function), GhostBase (number), SeasonTitles (table), EdgeTiers (number), Power (number), Shop (table), ClassPower (table), Edge (function), SeasonPull (number)
+
+local BuildStats = require(ReplicatedStorage.PlatformBattles.Shared.BuildStats)
+Members: Brand (function), Elements (table), ArenaStatWorth (table), MaxWithPowers (table), HasPower (function), Groups (table), List (table), Keys (table), ArenaPowerWorth (table), ArenaFactors (function), ArenaShare (number), Powers (table), ElementOf (function), PowerSlotOrder (table), PowerById (table), ElementInfo (table), PveDamageStats (table), PowerStatAdds (table), DotElement (table), ArenaMaxThorns (number), ByKey (table), Text (function), Totals (function)
+
+local PlazaConfig = require(ReplicatedStorage.PlatformBattles.Shared.PlazaConfig)
+Members: Enabled (boolean), MovementEnabled (boolean), Clamp (function), Parse (function), MoveSeconds (number), Rooms (table), Shown (table), WorldH (number), At (function), Room (function), Auras (table), WorldW (number), Speed (number), Format (function), Spawn (table), Walk (table)
+
+local MarketConfig = require(ReplicatedStorage.PlatformBattles.Shared.MarketConfig)
+Members: Cosmetic (function), ParseOwned (function), TauntCooldown (number), Tier (function), PriceForProduct (function), Wearable (function), Attr (table), ProductFor (function), OwnsItem (function), RarityColors (table), ItemEnabled (function), ForSale (function), Description (function), DisplayGrants (function), Live (function), Tiers (table), Slots (table), Shop (table), ThisWeek (function), Taunts (function), TauntsEnabled (boolean), Rarity (function), CreditFor (function), ParseCredits (function), Inventory (function), WeekEnds (function), Cosmetics (table), Week (function), Owns (function), OnSale (function), NextSale (function), Item (function), SlotNames (table), Items (table)
+
+local EnemyResists = require(ReplicatedStorage.PlatformBattles.Shared.EnemyResists)
+Members: For (function), Lines (function), FamilyOf (function), Family (table), FamilyNames (table), Profiles (table)
+
+local TormentIsolation = require(ReplicatedStorage.PlatformBattles.Shared.TormentIsolation)
+Members: Number (function), OverflowLimit (number), Maximum (number), StoryGearScale (function), Build (function), Normalize (function), Copy (function), StartingPotions (number), Refill (function), BagLimit (number), IsDifficulty (function), Version (number), StartingGold (number)
+
+local BossPatterns = require(ReplicatedStorage.PlatformBattles.Shared.BossPatterns)
+Members: Enabled (boolean), BraceScale (function), Color (Color3), Step (function), For (function), BraceIds (function), IsBrace (function), Bosses (table), Modes (table), Validate (function), Mode (function)
+
+local TormentEmbers = require(ReplicatedStorage.PlatformBattles.Shared.TormentEmbers)
+Members: Number (function), CursedChance (function), MaxBalance (number), Offer (function), MaxStock (number), Shop (table), Normalize (function), BoxRarity (table), BoxRarities (table), Enabled (boolean), LegacyCap (number), Reward (function), ValidClaim (function), PityBoxes (number), OpenBox (function), PityLeft (function), BoxLoot (table), Purchase (function), Award (function), Work (function), StockIds (table), BoxLootById (table), RewardCapTier (number)
+
+local KeyDungeons = require(ReplicatedStorage.PlatformBattles.Shared.KeyDungeons)
+Members: DefinitionList (table), Label (function), Rooms (table), Install (function), Definitions (table), SlimeList (table), Land (table), BossMusicId (number), Keys (table), Battle (function), CanOffer (function), KeyList (table), ZoneId (string), Fuse (function), Id (string), Definition (function), Info (function), Card (function), Normalize (function), StoryKeys (table), Name (string), SlimeById (table), Key (function), AwardSlime (function), BlightedKey (function), LootDifficulty (function)
+
+local CastleDungeon = require(ReplicatedStorage.PlatformBattles.Shared.CastleDungeon)
+Members: KeyName (string), EnemyId (function), Entry (string), Rooms (table), Victory (string), Install (function), Land (table), BossMusicId (number), Actions (function), TierText (table), ZoneId (string), Id (string), Chest (string), Name (string), KeyPrefix (string), Relic (string), Color (Color3), Art (string)
+
+local MarketGiveaways = require(ReplicatedStorage.PlatformBattles.Shared.MarketGiveaways)
+Members: CanClaim (function), Name (function), Grant (function), Choices (function), Resolve (function)
+
+local SkillScaling = require(ReplicatedStorage.PlatformBattles.Shared.SkillScaling)
+Members: Defaults (function), Channels (table), Order (table), Recipes (table), Pools (function), Label (function), Parts (function), Weights (function), Value (function), HealingRecipes (table), Power (function), Rank (function)
+
+local SkillBook = require(ReplicatedStorage.PlatformBattles.Shared.SkillBook)
+Members: Describe (function), Facts (function), Build (function)
+
+local StatAllocationContext = require(ReplicatedStorage.PlatformBattles.Shared.StatAllocationContext)
+Members: For (function)
+
+local TradeEscrowRules = require(ReplicatedStorage.PlatformBattles.Shared.TradeEscrowRules)
+Members: Capture (function), Resolve (function), Hold (function)
+
+local GearCombatBudget = require(ReplicatedStorage.PlatformBattles.Shared.GearCombatBudget)
+Members: PinCooldown (number), KillEnergy (number), TurnHealing (number), ActionHealing (number), ControlAvailable (function), EnergyRefund (number), Healing (function), PassiveHealing (function), BeginActorTurn (function), Turn (function), PassiveRecovery (function), PassiveAction (number), Energy (function), PassiveTurn (number)
+
+local RunSupplies = require(ReplicatedStorage.PlatformBattles.Shared.RunSupplies)
+Members: Consume (function), RestoreEffects (function), NormalizeEffects (function), Effects (function), ItemDefinitions (function), Apply (function), CanUse (function), Normalize (function), Remaining (function), Count (function), List (table), HpLimit (number), ById (table), BrewLimit (number), StockCap (number)
+
+local PetCombatRules = require(ReplicatedStorage.PlatformBattles.Shared.PetCombatRules)
+Members: Fortify (function), BeginRound (function)
+
+local PotionStock = require(ReplicatedStorage.PlatformBattles.Shared.PotionStock)
+Members: Trade (function), Setting (string), Quantity (function), ShopCap (number), Filter (function), ValidKeep (function), Off (number), KeepMaximum (number)
+
+local JungleDungeon = require(ReplicatedStorage.PlatformBattles.Shared.JungleDungeon)
+Members: KeyName (string), EnemyId (function), Entry (string), Rooms (table), Victory (string), Names (table), Land (table), BossMusicId (number), Actions (table), TierText (table), ZoneId (string), Id (string), Chest (string), Name (string), Install (function), KeyPrefix (string), Relic (string), Color (Color3), Art (string)
+
+local RunModifiers = require(ReplicatedStorage.PlatformBattles.Shared.RunModifiers)
+Members: BurstDamage (function), ResetReady (function), BattleScale (function), RouteScale (function), AllReady (function), RestScale (function), Quantity (function), Normalize (function), List (table), AllowLoot (function), SetReady (function), Get (function)
+
+local EggSales = require(ReplicatedStorage.PlatformBattles.Shared.EggSales)
+Members: Prices (table), MaxAmount (number), Price (function), Apply (function)
+
+local MarketGifts = require(ReplicatedStorage.PlatformBattles.Shared.MarketGifts)
+Members: Grant (function), Price (function), Definition (function), Check (function), ItemId (function)
+
+local Fatebrand = require(ReplicatedStorage.PlatformBattles.Shared.Fatebrand)
+Members: Eligible (function), Apply (function)
+
+local GearRestoreRules = require(ReplicatedStorage.PlatformBattles.Shared.GearRestoreRules)
+Members: Items (function), Stats (function), Summary (function), Build (function)
+
+local RaidFury = require(ReplicatedStorage.PlatformBattles.Shared.RaidFury)
+Members: NoCapPhase (number), TransformPhase (number), Pool (number), MaxStrikes (number), StrikesByPhase (table), PhaseFill (function), FloorPhase (number), FloorStep (number), Chip (function), Cap (function), Strikes (function), PressurePerPhase (number), Unlocks (function), FloorScale (function), BarragePhase (number), BracePhase (number), PhaseRounds (number), Actions (function), Roman (function), Phase (function), Barrages (table), Growth (number), Match (function), BarrageById (table), Pressure (function), Colors (table), Color (function), HitCap (table), Power (function), PhaseStart (function), Barrage (function)
+
+local GuildCoreTransferRules = require(ReplicatedStorage.PlatformBattles.Shared.GuildCoreTransferRules)
+Members: Valid (function), ReceiptLimit (number), Hold (function), Resolve (function), Decision (function), CloseGuild (function), Apply (function)
+
+local GuildVaultTransferRules = require(ReplicatedStorage.PlatformBattles.Shared.GuildVaultTransferRules)
+Members: Valid (function), ReceiptLimit (number), Hold (function), Decision (function), Resolve (function), Apply (function)
+
+local PrivateConfig = require(ReplicatedStorage.PlatformBattles.Shared.PrivateConfig)
+Members: Values (function), Install (function)
+
+local ExpeditionLore = require(ReplicatedStorage.PlatformBattles.Shared.ExpeditionLore)
+Members: PagesAt (function), Guardians (table), CorePages (table), CorePagesAt (function), PageStep (function), PageEvery (number), Intro (table), FallLine (function), GuardianLine (function), Pages (table), Chapters (table)
+
+local ExpeditionConfig = require(ReplicatedStorage.PlatformBattles.Shared.ExpeditionConfig)
+Members: MaterialsFor (function), MilestoneById (table), Elite (table), DifficultyFor (function), DayEnds (function), ShaftTo (function), DefenseGrowth (number), Rewards (number), MilestoneTier (function), Titles (table), DailyGearChests (number), KindFor (function), Places (table), Install (function), Place (function), WithBonus (function), ChestMaterials (function), Enemies (table), Patterns (table), LineageMultiplier (function), Day (function), Milestones (table), PlaceById (table), IsDifficulty (function), ValidStart (function), BasePower (number), StartOptions (function), ChestGold (function), CoreBonus (function), Battle (function), LevelMin (number), Growth (function), BaseHp (number), IsGuardian (function), Items (table), LineageShare (number), MinLevel (number), LevelMax (number), MilestoneRewards (table), PlaceByDifficulty (table), MilestoneMaterials (function), MaterialList (table)
+
+local PublicInfo = require(ReplicatedStorage.PlatformBattles.Shared.PublicInfo)
+Members: Request (function)
+
+local AdminPermissions = require(ReplicatedStorage.PlatformBattles.Shared.AdminPermissions)
+Members: IsAdmin (function), IsOwner (function), IsProtected (function), Rank (function)
+
+local BazaarConfig = require(ReplicatedStorage.PlatformBattles.Shared.BazaarConfig)
+Members: DailyLimit (function), IsItem (function), MaxPerOffer (number), PriceLimits (function), PayoutOf (function), FeeOf (function), PriceBand (table), Day (function), MaxPrice (number), Whole (function), Band (function), MaxFor (function), Name (function), Enabled (boolean), MaxOffers (number), Items (table), DailyBuy (table), List (table), Definition (function), PriceOk (function), Featured (table), Prices (table), BookLevels (number), Fee (number), Exclude (table), MaxPerBuy (number), MinPrice (number), MaxOffersPerItem (number), OfferHours (number)
+
+[LocalScript] RbxCharacterSounds
+Path: Players.RubbishZ.PlayerScripts.RbxCharacterSounds
+
+local AtomicBinding = require(Players.RubbishZ.PlayerScripts.RbxCharacterSounds.AtomicBinding)
+Members: destroy (function), unbindRoot (function), bindRoot (function), _startBoundFn (function), _stopBoundFn (function), __index (table), new (function)
+
+[LocalScript] RPGClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RPGClient
+
+[LocalScript] LightClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.LightClient
+
+local MageRhythmClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MageRhythmClient)
+Members: Cancel (function), _destroyOrbs (function), _playCircle (function), _setClericCharge (function), _clearCircle (function), _stopOrbit (function), _playSuccessSound (function), __index (table), new (function), Destroy (function), _spawnOrb (function), _startOrbit (function), _impact (function), Start (function), Resolve (function), _playCast (function), TakeIcicleCharge (function)
+
+local BattleJoinClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleJoinClient)
+Members: Show (function), _refreshHint (function), Destroy (function), Hide (function), _join (function), __index (table), new (function)
+
+local MageGuardClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MageGuardClient)
+Members: Clear (function), _rootForUserId (function), Destroy (function), Stop (function), Hit (function), Start (function), _render (function), __index (table), new (function)
+
+local AdminPanelClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminPanelClient)
+Members: _open (function), Activate (function), _clearList (function), _showStatus (function), _refreshVisible (function), PaintCard (function), _mount (function), _hookEntry (function), SetOpen (function), Destroy (function), _setStatus (function), _chip (function), _dropRow (function), _result (function), _area (function), _revealTab (function), RefreshCards (function), _setSubbar (function), _renderRevenue (function), _renderTools (function), _updateHero (function), RefreshAccess (function), __index (table), new (function), _placeList (function), _buildRow (function), Layout (function), _requestRevenue (function), _paintHints (function), _paintJump (function), Render (function), _renderSearch (function), _recentChip (function), _cell (function), _tile (function), _selected (function), _build (function), _paintRail (function), _grow (function), _hint (function)
+
+local CombatReactionClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatReactionClient)
+Members: PlayHeldItemTransition (function), _updateTauntMarkers (function), _retireTrack (function), _destroySylph (function), StopBattleStance (function), PlayWarriorAttack (function), PlaySlimeBall (function), _ensureBattleStance (function), PlayDaggerThrowAnimation (function), PlayWarriorQTEFailure (function), _playPouchDraw (function), Clear (function), PlayTimedBlock (function), EnsureBattleStance (function), StartBattleStance (function), PlayWarriorSkill (function), PlayDaggerThrow (function), SetBattle (function), ShowDamageIndicator (function), PlayMeditate (function), PlayAngelicBlessing (function), PlayWarriorPosePreview (function), _stopHeldItemPose (function), _finishTransientTrack (function), PlayDaggerAttack (function), _summonSylph (function), __index (table), new (function), Destroy (function), PlayUnarmedAttack (function), _playBasicAttack (function), EnsureWarriorGuard (function), PlayHit (function), PlayDodge (function), StartSatchel (function), _updateSylphs (function), StopWarriorGuard (function), _recoverDaggerThrow (function), PlayUnarmedImpact (function), StartWarriorGuard (function), StopSatchel (function), IsBattleStancePlaying (function), PlaySylphSupport (function), PlayStatusApplied (function)
+
+local SettingsClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SettingsClient)
+Members: Destroy (function), Apply (function), _remember (function), PanelHeight (number), _build (function), _connect (function), __index (table), new (function)
+
+local ExplorationPanelsClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ExplorationPanelsClient)
+Members: HideArtTooltip (function), ToggleInventory (function), UpdateInventoryDrag (function), HideItemAction (function), UpdateSummaryDock (function), ToggleSatchel (function), Open (function), BeginInventoryDrag (function), SetPartyCollapsed (function), UpdateProfile (function), HideInvite (function), CancelInventoryDrag (function), SpawnDragGhost (function), RefreshLiveHealth (function), ApplyViewport (function), RefreshDetail (function), RefreshRecord (function), Destroy (function), ShowInvite (function), __index (table), new (function), RefreshEquipment (function), RefreshCandidates (function), CloseTopmost (function), ToggleLoadout (function), CloseAll (function), ToggleRecord (function), UpdateParty (function), RefreshSatchel (function), RefreshInventory (function), TogglePartySearch (function), ShowItemAction (function), ShowArtTooltip (function), SelectInventoryEntry (function), BindLiveHealth (function), FinishInventoryDrag (function), RefreshParty (function)
+
+local InGameSettingsClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.InGameSettingsClient)
+Members: Destroy (function), IsOpen (function), Close (function), Refresh (function), Open (function), Toggle (function), ApplyViewport (function), __index (table), new (function)
+
+[LocalScript] TypingIndicator
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TypingIndicator
+
+local SmoothSprintClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SmoothSprintClient)
+Members: Destroy (function), Refresh (function), _stop (function), Owns (function), _start (function), _step (function), __index (table), new (function)
+
+local ThiefSlashClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ThiefSlashClient)
+Members: Destroy (function), Cancel (function), _mousePosition (function), Start (function), _showCursor (function), _splitCircle (function), _processPointer (function), _unbindInput (function), _playSuccessSound (function), _bindInput (function), _trySlash (function), _playTarget (function), _makeTrail (function), __index (table), new (function)
+
+local SoulWebClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SoulWebClient)
+Members: Close (function), BeginCinematic (function), ZoomAtCursor (function), __index (table), new (function), Destroy (function), IsOpen (function), CaptureRenderedTransform (function), RestoreGameplayGuis (function), PositionCanvas (function), Refresh (function), Open (function), RestoreCinematicState (function), PlayAwaken (function), CancelTransformTweens (function), RevealWeb (function), UpdateProfile (function), Select (function), IsAvailable (function), StyleNode (function), PrepareEntrance (function)
+
+local WarriorGripCalibrationClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WarriorGripCalibrationClient)
+Members: Destroy (function), _onInput (function), _send (function), _available (function), SetOpen (function), _refresh (function), __index (table), new (function)
+
+local ShopClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ShopClient)
+Members: ApplyViewport (function), IsOpen (function), Toggle (function), Close (function), UpdateProfile (function), Refresh (function), Open (function), _useReset (function), _beginPurchase (function), _openResetChoice (function), _closePurchaseChoice (function), _cancelGiftIntent (function), _renderRecipients (function), _openPurchaseChoice (function), __index (table), new (function)
+
+[LocalScript] WorldEventClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WorldEventClient
+
+local ExplorationHotbarClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ExplorationHotbarClient)
+Members: Destroy (function), _updateLayout (function), Refresh (function), _setCaption (function), ApplyViewport (function), Pulse (function), SetActive (function), ActivateSlot (function), _refreshCaption (function), UpdateProfile (function), SetCallback (function), __index (table), new (function)
+
+local TorchGripCalibrationClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TorchGripCalibrationClient)
+Members: Destroy (function), _onInput (function), _send (function), _available (function), SetOpen (function), _refresh (function), __index (table), new (function)
+
+[LocalScript] CaveDreadClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CaveDreadClient
+
+local EncyclopediaClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.EncyclopediaClient)
+Members: Close (function), ClearCreaturePreview (function), Toggle (function), RenderUnknown (function), __index (table), new (function), Destroy (function), MountCreatureModel (function), ApplyViewport (function), RenderEmpty (function), Refresh (function), Open (function), IsOpen (function), IsDiscovered (function), Select (function), CreateCreaturePreview (function), UpdateProfile (function), GetEntries (function), RenderTrinket (function), RenderCreature (function), SetTab (function)
+
+[LocalScript] FloatingBoard
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.FloatingBoard
+
+[LocalScript] QuestBoardClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.QuestBoardClient
+
+[LocalScript] TrinketVisualClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TrinketVisualClient
+
+[LocalScript] NPCInteractionClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.NPCInteractionClient
+
+local WorldOrbEffect = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WorldOrbEffect)
+Members: Destroy (function), SetEnabled (function), _step (function), _center (function), __index (table), new (function)
+
+[LocalScript] RaceAuraClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RaceAuraClient
+
+local PanelAudioClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PanelAudioClient)
+Members: PlayOpen (function), PlayClose (function)
+
+[LocalScript] SpawnArrivalClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SpawnArrivalClient
+
+local GateClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GateClient)
+Members: Destroy (function), _stopPromptTweens (function), ApplyViewport (function), _restoreTravelCamera (function), _playCast (function), _refreshPrompt (function), Open (function), _promptTween (function), _playTravelFlash (function), _submit (function), Close (function), IsOpen (function), _setTravelCharacterHidden (function), _clearTravel (function), __index (table), new (function)
+
+[LocalScript] SlimeEventClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SlimeEventClient
+
+local AdminAnimationPreviewClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminAnimationPreviewClient)
+Members: _applyAt (function), Cancel (function), _playStaffImpact (function), Destroy (function), _applyPose (function), Play (function), GetPreviewDefinition (function), _applyStaffLocomotion (function), _updatePreviewProp (function), _updateAura (function), _updateSwordTrail (function), __index (table), new (function)
+
+[LocalScript] StarterFirefliesClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StarterFirefliesClient
+
+local DialogueAudioClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DialogueAudioClient)
+Members: PlayOpen (function), SetTalking (function)
+
+local StaffAnimationClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StaffAnimationClient)
+Members: Destroy (function), _update (function), _playImpact (function), _restoreTransforms (function), _applyPose (function), SetActive (function), PlayCast (function), _alignDrawnStaff (function), _captureRig (function), _restorePose (function), __index (table), new (function)
+
+[LocalScript] DefaultJumpSoundMute
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DefaultJumpSoundMute
+
+[LocalScript] MagicalLanternClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MagicalLanternClient
+
+local WarriorBladeTimingClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WarriorBladeTimingClient)
+Members: Cancel (function), _restoreMouseIcon (function), _layout (function), _cancelTweens (function), _moveTrace (function), _resetTrace (function), _mouseScreenPoint (function), _beginTrace (function), _animateTrace (function), __index (table), new (function), Destroy (function), _finish (function), _showProgress (function), _completeTrace (function), Start (function), _bindInput (function), _screenToCanvas (function), _setPointer (function), _applyPattern (function), _tween (function)
+
+local BattleDownedClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleDownedClient)
+Members: _chooseSoulShot (function), _updateSoulCamera (function), _hideCharacter (function), _layout (function), Transition (function), _makeSoul (function), __index (table), new (function), ObserveParty (function), _hidePanel (function), _releaseCamera (function), PlayFallen (function), IsControllingCamera (function), Destroy (function), Clear (function), Update (function), _makeShardBurst (function), _updateSouls (function), _restore (function)
+
+local StatAllocationClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StatAllocationClient)
+Members: Destroy (function), IsOpen (function), UpdateProfile (function), Close (function), Open (function), __index (table), new (function)
+
+local TopActionsClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TopActionsClient)
+Members: new (function)
+
+local MenuCloseTween = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MenuCloseTween)
+Members: play (function)
+
+local CustomizationStageMarkers = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CustomizationStageMarkers)
+Members: Resolve (function)
+
+local CustomizationFireflies = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CustomizationFireflies)
+Members: new (function)
+
+local CustomizationRollAudio = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CustomizationRollAudio)
+Members: new (function)
+
+local InventoryBrowse = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.InventoryBrowse)
+Members: Categories (table), Select (function), Filters (table)
+
+local DialogueReveal = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DialogueReveal)
+Members: Start (function)
+
+local BossHealthClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BossHealthClient)
+Members: ApplyViewport (function), _reset (function), Update (function), __index (table), new (function)
+
+local BattleResultPresentation = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleResultPresentation)
+Members: RenderParty (function), Layout (function), __index (table), new (function)
+
+local AdminToolCatalog = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminToolCatalog)
+Members: Categories (table), Payload (function), Tabs (table), VisibleTabs (function), Filter (function), Build (function), GearSections (table), NavGroups (table)
+
+local CombatTrialPresentation = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatTrialPresentation)
+Members: Tween (function), Cancel (function), Score (function), Close (function), Open (function), Destroy (function), Position (function), Mark (function), Round (function), __index (table), new (function)
+
+local ArcaneTimingVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ArcaneTimingVisual)
+Members: Phase (function), Diameter (function)
+
+local WorldCycleClock = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WorldCycleClock)
+Members: Show (function), Cancel (function), _paint (function), _tween (function), __index (table), new (function)
+
+local CraftingWorkbench = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CraftingWorkbench)
+Members: Render (function), Close (function), RefreshQualityOdds (function), Layout (function), Open (function), PlayCraftSuccess (function), Preview (function), FitPreview (function), RenderMaterials (function), __index (table), new (function)
+
+local AdminAnimationShowcase = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminAnimationShowcase)
+Members: Order (table), Definitions (table)
+
+local WorkbenchLayout = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WorkbenchLayout)
+Members: Get (function)
+
+local StaffPreviewNormalizer = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StaffPreviewNormalizer)
+Members: Normalize (function)
+
+local InventoryWeaponStats = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.InventoryWeaponStats)
+Members: Build (function)
+
+local StaffBasicAttackClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StaffBasicAttackClient)
+Members: Destroy (function), Play (function), _remove (function), __index (table), new (function)
+
+local SoulSiphonVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SoulSiphonVisual)
+Members: Envelope (function), BeamSeconds (number), Duration (number), Widths (function), ConfigureBeam (function)
+
+local ClericOrbVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ClericOrbVisual)
+Members: CoreRatio (number), MoteCount (number), Diameter (function), HeadOffset (function), HaloRadiusRatio (number), Charge (function)
+
+local CursedImpactVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CursedImpactVisual)
+Members: ImpactAt (number), Duration (number), FlightAlpha (function), Sample (function)
+
+local StaffImpactGeometry = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StaffImpactGeometry)
+Members: SurfaceOffset (function)
+
+local CursedChargeVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CursedChargeVisual)
+Members: Sample (function), FollowAlpha (function)
+
+local ScrollSpellClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ScrollSpellClient)
+Members: _playProjectileImpact (function), Destroy (function), Clear (function), _playMeteorImpact (function), _remove (function), _render (function), IsControllingCamera (function), SetBattle (function), ReleaseCamera (function), Play (function), ChargeFireball (function), __index (table), new (function)
+
+local PebbleThrowClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PebbleThrowClient)
+Members: Update (function), __index (table), new (function)
+
+local MeteorImpactClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MeteorImpactClient)
+Members: Update (function), __index (table), new (function)
+
+local IcicleSpellClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.IcicleSpellClient)
+Members: Update (function), AddCharge (function), Release (function), new (function), __index (table), SetTarget (function)
+
+local BlizzardFogClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BlizzardFogClient)
+Members: Clear (function), Destroy (function), _render (function), __index (table), new (function)
+
+local MeteorCameraClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MeteorCameraClient)
+Members: Update (function), _shot (function), Finish (function), __index (table), new (function)
+
+local ClericChargeClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ClericChargeClient)
+Members: Update (function), __index (table), new (function)
+
+local ForestMobClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ForestMobClient)
+Members: Destroy (function), Play (function), _render (function), PlayStealSound (function), _playAttackSound (function), ClearCasts (function), __index (table), new (function)
+
+local DefenseTimingClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DefenseTimingClient)
+Members: Destroy (function), Cancel (function), _refreshHint (function), Start (function), Press (function), _setRing (function), Resolve (function), __index (table), new (function)
+
+local WorldCombatViewerClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WorldCombatViewerClient)
+Members: Receive (function), Close (function), Destroy (function), __index (table), new (function)
+
+local FistSkillClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.FistSkillClient)
+Members: Clear (function), _finishCamera (function), _ring (function), Update (function), _remove (function), _camera (function), SetBattle (function), Destroy (function), Play (function), _impact (function), IsControllingCamera (function), __index (table), new (function)
+
+local GatePromptView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GatePromptView)
+Members: new (function)
+
+local TentacleClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TentacleClient)
+Members: Destroy (function), Play (function), _render (function), _playCrush (function), ClearCasts (function), __index (table), new (function)
+
+local SlimeKingClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SlimeKingClient)
+Members: Destroy (function), ClearCasts (function), Play (function), _render (function), CameraOffset (function), __index (table), new (function)
+
+local CursedMobEffects = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CursedMobEffects)
+Members: IsAction (function), Create (function), Render (function)
+
+local QuestBurnClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.QuestBurnClient)
+Members: Play (function), active (boolean)
+
+local NecromancerVFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.NecromancerVFX)
+Members: Play (function)
+
+local ForgeStatSummary = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ForgeStatSummary)
+Members: Build (function)
+
+local UndeadRiseEffects = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UndeadRiseEffects)
+Members: Create (function), Render (function)
+
+local NecromancerCurseVFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.NecromancerCurseVFX)
+Members: Play (function)
+
+local InventoryNavigationLayout = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.InventoryNavigationLayout)
+Members: Build (function)
+
+local CombatFeelClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CombatFeelClient)
+Members: Clear (function), _effect (function), Cue (function), Impact (function), CameraOffset (function), __index (table), new (function)
+
+local BattleCommandRules = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleCommandRules)
+Members: AcceptSnapshot (function), MainVisible (function), CanReveal (function), DockPosition (function)
+
+local ElementalScrollClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ElementalScrollClient)
+Members: Update (function), SetCharge (function), Release (function), _staffTip (function), __index (table), new (function)
+
+[LocalScript] MobDeathEffects
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MobDeathEffects
+
+local ExplorationMobilityClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ExplorationMobilityClient)
+Members: Receive (function), Remove (function), Destroy (function), Update (function), CanUse (function), __index (table), new (function)
+
+local DashBurstVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DashBurstVisual)
+Members: Update (function), Snapshot (function), __index (table), new (function)
+
+local DashAnimationClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DashAnimationClient)
+Members: Destroy (function), Update (function), Play (function), Retire (function), __index (table), new (function)
+
+local DoubleJumpBurstVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DoubleJumpBurstVisual)
+Members: Launch (function), Update (function), __index (table), new (function)
+
+local DesertSandClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DesertSandClient)
+Members: Clear (function), Destroy (function), Update (function), Create (function), new (function)
+
+local DesertBoundaryClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DesertBoundaryClient)
+Members: Clear (function), Column (function), Destroy (function), Update (function), new (function)
+
+local DesertClusterEffects = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DesertClusterEffects)
+Members: Create (function), Render (function)
+
+local MageSuperVFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MageSuperVFX)
+Members: Play (function)
+
+local ReversalArenaClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ReversalArenaClient)
+Members: Clear (function), Destroy (function), _render (function), __index (table), new (function)
+
+local HexerHandAuraClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.HexerHandAuraClient)
+Members: Destroy (function), Update (function), __index (table), new (function)
+
+[LocalScript] GoblinMarketClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GoblinMarketClient
+
+local EyeClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.EyeClient)
+Members: Destroy (function), Play (function), _render (function), ClearCasts (function), __index (table), new (function)
+
+local DaggerSuperClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DaggerSuperClient)
+Members: Clear (function), Destroy (function), _releaseCamera (function), _remove (function), IsControllingCamera (function), SetBattle (function), Update (function), Play (function), _sound (function), ClearCasts (function), __index (table), new (function)
+
+local PhysicalSkillClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PhysicalSkillClient)
+Members: Clear (function), SetBattle (function), Destroy (function), Play (function), IsControllingCamera (function), __index (table), new (function)
+
+local DaggerSuperArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DaggerSuperArt)
+Members: Trap (function), Line (function), GroundFrame (function), DrawTrap (function), Part (function), TrapFrame (function), DrawRibbon (function), Ribbon (function)
+
+local AssassinShadow = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AssassinShadow)
+Members: Restore (function), Draw (function), Hide (function), Visibility (function), new (function)
 
 local PhysicalCameraShot = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PhysicalCameraShot)
 Members: Begin (function), Valid (function), Draw (function), Finish (function)
 
+local WarriorSuperClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WarriorSuperClient)
+Members: Clear (function), Update (function), Destroy (function), Sound (function), SetBattle (function), Play (function), Remove (function), Release (function), IsControllingCamera (function), __index (table), new (function)
+
+local WarriorSuperPose = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WarriorSuperPose)
+Members: Destroy (function), Update (function), Restore (function), __index (table), new (function)
+
+local WarriorSuperEffects = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WarriorSuperEffects)
+Members: Draw (function), new (function)
+
+local DashSprintClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DashSprintClient)
+Members: GetMultiplier (function), _spawnRing (function), Update (function), Resting (function), Destroy (function), _updateFov (function), IsBoosted (function), _updateRings (function), __index (table), new (function)
+
+local MenuBackdrop = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MenuBackdrop)
+Members: SetMode (function), PortalRect (function), _buildPortal (function), _buildLair (function), _blink (function), SetHaloTransparency (function), _clear (function), SetIrisCharged (function), SetVisible (function), GetEyeCenter (function), _buildEye (function), Destroy (function), _buildFull (function), __index (table), new (function), _setBlink (function), _stepLair (function), GetIrisCenter (function), Charge (function), SetLids (function), OpenEye (function), SetLookTarget (function), SetScripted (function), _step (function), GetStageSlot (function), _charge (function), SetStageCenter (function), _build (function), _buildStage (function), _takeDragon (function), GetPixelSize (function)
+
+local PixelSprite = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSprite)
+Members: SetOutlineColor (function), Step (function), Flash (function), __index (function), Copy (function), _show (function), _realize (function), Claim (function), SetGray (function), Play (function), new (function), SetFlip (function), Destroy (function), _applyClaims (function), _sync (function), _redrawTags (function), Pending (function), Unclaim (function), Release (function), _materialize (function), Prepare (function), HitTest (function), SetTransparency (function), Of (function), Crumble (function), Freeze (function), _build (function)
+
+local PixelSpriteLibrary = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSpriteLibrary)
+Members: Outline (Color3), GearLooks (table), SuperHelms (table), Shapes (table), Grave (function), Enemy (function), Enrage (function), Weapons (table), RageStyles (table), Hero (function)
+
+local PixelBattleView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBattleView)
+Members: _petAct (function), _update (function), _raceCue (function), _nameplate (function), _projectile (function), _syncPet (function), _eruption (function), _size (function), _thorn (function), _setGrave (function), _victoryHop (function), _styleFor (function), _title (function), IsEnabled (function), _hitbox (function), _petCharge (function), _arenaAttack (function), _partySlot (function), Update (function), _fatal (function), _arrow (function), _bossAura (function), PetStyle (function), _buildColosseum (function), SetChestLoot (function), _arrowShot (function), _resultPanel (function), _secretIntro (function), _hudScale (function), _statusTooltip (function), _setStatuses (function), _syncSummon (function), _noteHit (function), _buildStage (function), _bossBar (function), _sparks (function), _enemySlot (function), _hpBar (function), _fitNeeds (function), _rebuildEnemySprite (function), Announce (function), _updateHover (function), _arenaCheer (function), _arenaHero (function), _fitStage (function), _slashFx (function), _sound (function), _holdUpdates (function), _fitScreenCover (function), __index (table), ZoneLook (function), _arenaBigMove (function), _dummyMeter (function), _lightning (function), _enemyShape (function), IsActive (function), PlayFinale (function), _barBottom (function), _bossTransform (function), _raidMeter (function), _placePlate (function), _spreadPlates (function), _textFloor (function), _dismissSummon (function), _arenaCall (function), _dropArenaScene (function), _pinHidden (function), _screenFlash (function), _stageSize (function), EndTargeting (function), _cue (function), _stanceFx (function), _center (function), _popup (function), _hitstop (function), _beam (function), _summonStrike (function), _crystalSword (function), _dot (function), _ensureEnemies (function), DescribeTarget (function), _formInfo (function), _targetUnderPointer (function), _flushRetired (function), _blightRoot (function), _finisher (function), _treasureFountain (function), PlayMeditate (function), _move (function), _setProc (function), PlaySteal (function), _easeFit (function), _coinArc (function), _bossChest (function), _starFlare (function), _sporePuff (function), _brace (function), _rewardSpray (function), _activeEnemy (function), BeginTargeting (function), _mochiBounce (function), _aura (function), _victoryBanner (function), _reviveEnemy (function), _safeInsets (function), _resultSequence (function), _hudZones (function), ShowResult (function), _heroAttack (function), Cue (function), _arenaHitCheer (function), _impact (function), _activeParty (function), _petSignature (function), _feet (function), EnemyPresentationBusy (function), _crystalShards (function), _prismShard (function), _retire (function), _crackTo (function), _rise (function), _bossIntro (function), _debris (function), _enemyAttack (function), _layoutScenery (function), _bossSignature (function), _syncGuard (function), _step (function), _emberStream (function), _line (function), _dust (function), _buildHeat (function), _zoomTo (function), _note (function), _lunge (function), _trackScreenCover (function), _shake (function), new (function), _tint (function), _riseColumn (function), _miniBossIntro (function), _bossDeath (function), _letterbox (function), _ensureParty (function), _chestLootPanel (function), _start (function), Start (function), FocusTarget (function), Stop (function), _critCinematic (function), _releaseUpdates (function), _fitTall (function), _padStatus (function), _stagePoint (function)
+
+local PixelCommandMenu = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelCommandMenu)
+Members: _banner (function), _syncBack (function), StepClock (function), _leave (function), _closeList (function), _layoutCommands (function), _moveList (function), _popIn (function), _syncPartyPick (function), _send (function), _rescale (function), _commandEnabled (function), _paintFoes (function), _confirmList (function), _closeSatchel (function), _describe (function), Destroy (function), Hide (function), _layoutInfo (function), _paintListTitle (function), _beginTargeting (function), _onKey (function), _pickTarget (function), Update (function), _paintLog (function), _index (function), _paintParty (function), _buildList (function), _back (function), _myEnergy (function), _foeRow (function), __index (table), new (function), _cancelTargeting (function), _setTarget (function), _perform (function), SetTurnClock (function), _clockLayout (function), _syncFoePick (function), _openList (function), _setListIndex (function), _firstSelectable (function), _flashTurn (function), _setCommand (function), _paintCommands (function), _confirmCommand (function), _refresh (function), _canAct (function), _showStatusTab (function)
+
+local SpriteCustomizer = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SpriteCustomizer)
+Members: SetProfile (function), LinkNavigation (function), _flush (function), _lookKey (function), __index (table), new (function), _changed (function), _paint (function), _cycle (function), SlotPortrait (function), SetActive (function), Layout (function), _redraw (function), Height (number), _set (function), _randomize (function), _options (function)
+
+local VillageArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.VillageArt)
+Members: Outline (Color3), Art (table), Building (function), Chimneys (table)
+
+local VillageView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.VillageView)
+Members: _setControls (function), _sendGuild (function), _openRanch (function), _music (function), _tickDaily (function), _openMerchant (function), _closeTrade (function), CloseCharacter (function), _size (function), _buildHud (function), SetCovered (function), _trackHover (function), _journeyGo (function), Open (function), _closeTitles (function), _closeInbox (function), _requestFailed (function), _spore (function), _openPortal (function), _openGuildBase (function), SetProfile (function), _journeyTarget (function), _positionHero (function), _toast (function), _openTrade (function), _puff (function), _pointsBadge (function), _chooseRun (function), _level (function), _stashPending (function), _request (function), StatPoints (function), _openPanel (function), _setInboxCount (function), _openEncyclopedia (function), _guildLeaderboard (function), _heroKey (function), _openLineage (function), _build (function), _closeLineage (function), _openTitles (function), TradeEvent (function), _placeBuilding (function), _stepDrifts (function), _uiScale (function), _guildInvite (function), _tradeTile (function), _closePanel (function), Info (table), _guildMemberRow (function), _openGuild (function), _firstRuin (function), _portalState (function), _tradeGoods (function), _giftShop (function), _closeGuild (function), _safeInsets (function), _closeDaily (function), _visit (function), _toggleAdmin (function), _journeyPoint (function), _guildShield (function), _tradeInvite (function), _setOut (function), _clear (function), _openPlaza (function), _refreshCharacterBadge (function), _refreshLineageBadge (function), _relayout (function), _tickConstruction (function), _oldVisit (function), OpenCharacter (function), _placeHero (function), _setHighlight (function), _celebrate (function), _firefly (function), _sendTrade (function), Close (function), _lightShowing (function), _drift (function), _sendAuction (function), _sound (function), _holdForLight (function), _refreshPlates (function), _tradeCardHooks (function), _closePortal (function), _updateHover (function), _stepBuilders (function), __index (table), new (function), _buildSite (function), _guildLevelBadge (function), _popupFit (function), _topInset (function), _openDaily (function), _refreshHeader (function), GuildEvent (function), _tradeCard (function), _closeMerchant (function), _tradeGearLines (function), StashPending (function), _guildViewPage (function), _drawPortal (function), _openInbox (function), IsOpen (function), _nextRequest (function)
+
+local PixelIcons = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelIcons)
+Members: StatusIcon (function), DrawLater (function), Draw (function), Art (table), LockBadge (function), FitUnit (function), GearIcon (function), ArenaCrest (function), Size (function)
+
+[LocalScript] PixelCursor
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelCursor
+
+local VillageWindow = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.VillageWindow)
+Members: _tabDullahan (function), _chooseAuctionRarity (function), _leftKey (function), GoodsLines (function), _tabChapel (function), _bubble (function), _tabInn (function), _tabStats (function), _placed (function), _splash (function), _anvilOverlay (function), _tickCountdown (function), _tabBuild (function), _tabSheet (function), Open (function), _auctionShow (function), BazaarData (function), CandyResult (function), _tabSkills (function), _auctionActions (function), _request (function), _storageTiles (function), _village (function), _tabForge (function), _over (function), HoneResult (function), _tabCostumes (function), _refreshNow (function), _buildCharacterLeft (function), CharacterScreen (table), IsOpen (function), _tabEmbers (function), _storageColumn (function), _candyAvailability (function), _updateSell (function), _tabCauldron (function), _sellForm (function), _candyBuy (function), _tabOaths (function), _tabHistory (function), _tabStorage (function), _endDrag (function), BazaarUI (table), GoodsKind (function), GoodsColor (function), _tabPeddler (function), _tabBlessing (function), _auction (function), _auctionTimeLeft (function), _mineKey (function), _tabMine (function), _sellFormKey (function), _auctionSelect (function), AuctionData (function), _auctionMatches (function), _sellGoods (function), _tabSell (function), _available (function), _tabBazaar (function), _sellHighlight (function), _auctionRow (function), _tabPets (function), _updateBrowse (function), _browseDetailKey (function), _browseKey (function), _tabAuction (function), UI (table), Contains (function), _countdown (function), _updateMine (function), _auctionNow (function), _mine (function), _browse (function), Close (function), _knowledgeShop (function), _tabHero (function), _listenSheet (function), UpdateStatProfile (function), CraftResult (function), CancelHone (function), _expandStorage (function), Tick (function), _updateStorage (function), _candyHeader (function), __index (table), new (function), _sparkBurst (function), _storageTile (function), _tabCraft (function), _scroll (function), _beginDrag (function), Refresh (function), _guiPoint (function), _tabShop (function), _beginHone (function), FormatTime (function), _storageItemRow (function), _buildLeft (function), _buildTabs (function), _storageFill (function), _level (function), _profile (function)
+
+local RunLobbyView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RunLobbyView)
+Members: _tormentTier (function), _queue (function), Close (function), _showInvite (function), _harvest (function), _hideInvite (function), _clear (function), _maxStartAct (function), _today (function), _invitePicker (function), _lobby (function), Toast (function), _gauntletBlock (function), __index (table), new (function), Destroy (function), IsOpen (function), _send (function), _multi (function), _solo (function), _choose (function), Open (function), _canStart (function), _portalHint (function), _startRow (function), _torment (function), _defaultStart (function), _gauntletLine (function), _difficultyRow (function), _renderNow (function), _render (function)
+
+local RunMapView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RunMapView)
+Members: _danger (function), _refreshVotes (function), _expeditionRating (function), Destroy (function), _refreshStatBadge (function), _replayStatus (function), _nextTierButton (function), _layout (function), _setEnabled (function), _journeyTag (function), _size (function), _closeSuperPicker (function), _superPicker (function), _reliquaryDrop (function), _eventReadySet (function), _summaryBody (function), _send (function), _buildParty (function), _chestDrop (function), _summaryRows (function), _summary (function), _story (function), _battleCover (function), _openEventModal (function), _scene (function), _eventMine (function), RequestState (function), _sceneKey (function), ChestDrops (function), _buildOptions (function), _isHost (function), _bigDrop (function), _land (function), _flushGear (function), _layoutChanged (function), _memberStatus (function), Update (function), _clear (function), _buildEvent (function), _animate (function), _hostName (function), _haulAdd (function), _checkEvent (function), _modal (function), __index (table), new (function), _classPicker (function), IsVisible (function), _hide (function), _memberCard (function), _backdropRoots (function), _buildHeader (function), IsActive (function), _memberLeftBanner (function), _show (function), _partyFrame (function), SetState (function), _voteResult (function), _build (function), _localMember (function), _paintScene (function), _expeditionHeader (function)
+
 local PixelQTE = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelQTE)
 Members: _open (function), Cancel (function), _thief (function), _feedback (function), _sound (function), _defenseResolved (function), Destroy (function), Handle (function), _pip (function), __index (table), new (function), _clearArea (function), _barrage (function), _send (function), _rescale (function), _defense (function), _close (function), _timedMarks (function), _bar (function), IsRunning (function), _warrior (function), _press (function), _markBar (function), _gradeAt (function), _run (function), _flash (function), _mage (function)
 
+local PixelFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelFX)
+Members: Shockwave (function), Stab (function), Cross (function), Slash (function), Claw (function), Burst (function), Impact (function)
 
+[LocalScript] WorldVeil
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.WorldVeil
 
+local PixelGuard = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelGuard)
+Members: Destroy (function), Hit (function), Colors (table), _alpha (function), Place (function), Step (function), __index (table), new (function)
 
+local PixelDeathView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelDeathView)
+Members: _clearPanel (function), _fadeCover (function), _step (function), _layout (function), _buildFull (function), Transition (function), ReleaseCover (function), _buildBanner (function), __index (table), new (function), Clear (function), _send (function), _hearts (function), Destroy (function), Update (function), _loseHeart (function), _uncover (function), _refresh (function), _flame (function), _buttons (function), _choose (function)
 
+local PixelLightView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelLightView)
+Members: _buildPuffs (function), Destroy (function), Close (function), Dismiss (function), _step (function), _layout (function), _showChoices (function), Failed (function), _refreshRevive (function), _buildSky (function), ReviveState (function), _celebrate (function), _buildBox (function), __index (table), new (function), _heroSprite (function), IsOpen (function), _buildJourney (function), _hearts (function), _pressRevive (function), _continue (function), _buildLight (function), _nextLine (function), _buildChoices (function), _buildSideCard (function), _reviveOffer (function), _metrics (function), _advance (function), Open (function), _reviveBusy (function), _buildHeroCard (function)
+
+local PixelGearView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelGearView)
+Members: _descriptionReader (function), _sendVanity (function), _cosmeticDetail (function), _refreshDetail (function), _togglePick (function), _refreshPicks (function), _pickMark (function), Destroy (function), _detailPanel (function), PreviewEffects (function), _requestBuild (function), Open (function), _bloodlineDetail (function), _pickTotals (function), StatRows (function), SetProfile (function), Close (function), _vanityControls (function), _stageKey (function), _send (function), _cosmeticTile (function), _select (function), _keyDetail (function), __index (table), new (function), _loadouts (function), IsOpen (function), _pactDetail (function), _lockButton (function), _sellManyDetail (function), _detailHeight (function), _sellable (function), _ultraDetail (function), _consumeBloodline (function), _pactConfirm (function), _tile (function), _owned (function), _build (function), _soulReveal (function), StatLines (function), _holdBuild (function)
+
+local PixelScrollFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelScrollFX)
+Members: Play (function)
+
+local PixelSuperFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSuperFX)
+Members: Play (function), H (table)
+
+local ResponsiveUI = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ResponsiveUI)
+Members: TenFoot (function), ScaleFor (function), DesignWidth (number), Attach (function), Big (function), DesignHeight (number), ToVirtual (function), TenFootScale (number), Virtual (function), Current (function), Grow (function)
+
+local InputHints = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.InputHints)
+Members: BindText (function), Changed (function), Button (function), Kind (function), Format (function), Get (function)
+
+local TutorialClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TutorialClient)
+Members: ShowPrompt (function), _onStart (function), _send (function), _wrapUp (function), _onDone (function), _step (function), BeginFirstTime (function), _clear (function), _hideCover (function), _fadeThrough (function), _onVfx (function), _onBattle (function), _coach (function), _card (function), __index (table), new (function)
+
+local PixelWings = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelWings)
+Members: Destroy (function), Styles (table), ByClass (table), Reach (function), Warm (function), Art (function), Step (function), Shatter (function), _mote (function), SetVisible (function), Flare (function), FitSize (function), Hides (table), __index (table), new (function)
+
+local PixelWeapons = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelWeapons)
+Members: Skins (table), Order (table), AscendedByClass (table), Get (function)
+
+local GearIcons = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GearIcons)
+Members: LegsSilhouette (table), Art (function), Emblems (table), Silhouettes (table), ItemEmblem (table), StyleSilhouette (table), ItemSilhouette (table), ItemColors (table)
+
+local ChatBubbles = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ChatBubbles)
+Members: Anchor (function), Start (function), Show (function), AnchorFor (function)
+
+[LocalScript] ChatBubblesInit
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ChatBubblesInit
+
+local PixelWeaponMoves = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelWeaponMoves)
+Members: Play (function), Signatures (table)
+
+local RunVignettes = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RunVignettes)
+Members: TICK (number), Live (function), Build (function)
+
+local PixelSummons = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSummons)
+Members: Ranged (table), Flying (table), Colors (table), Colossal (table), Build (function)
+
+[LocalScript] TitleChat
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TitleChat
+
+[LocalScript] AudioIsolation
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AudioIsolation
+
+local PixelUnderlordFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelUnderlordFX)
+Members: Titles (table), Chains (function), Hellfire (function), Maw (function), Moves (table)
+
+[LocalScript] TravelScreen
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TravelScreen
+
+local PixelChiefFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelChiefFX)
+Members: FadeOut (function), Stamp (function), Slam (function), Titles (table), Club (function), Arc (function), Cells (function), Ellipse (function), Roar (function), Moves (table)
+
+local PixelBossBar = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBossBar)
+Members: new (function)
+
+local PixelDrama = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelDrama)
+Members: Sounds (table), Impact (function), Build (function)
+
+local PixelBossFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBossFX)
+Members: Shapes (table), Play (function), Moves (table)
+
+local PurchasePrompt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PurchasePrompt)
+Members: Product (function), Pass (function), IsMissing (function)
+
+local AdminRestore = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminRestore)
+Members: IsOpen (function), Open (function), Close (function)
+
+local GamepadFocus = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GamepadFocus)
+Members: Select (function), Push (function), Prefer (function), Active (function), CursorActive (function), CanSelect (function), Pop (function), Shown (function)
+
+local PixelEnding = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelEnding)
+Members: IsPlaying (function), Play (function)
+
+local PixelGooseFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelGooseFX)
+Members: HonkSound (number), Intro (function), Shapes (table), Play (function), Moves (table)
+
+local PixelRageFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRageFX)
+Members: Transform (function), Colors (function), Aura (function), Kit (table), Ultimate (function), Flourish (function), Converge (function)
+
+local PixelRageArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRageArt)
+Members: Bosses (table)
+
+local PixelSagaFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSagaFX)
+Members: Play (function), Run (function), Moves (table)
+
+local PixelLightStory = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelLightStory)
+Members: _hold (function), _choice (function), Close (function), _taken (function), _skipToChoice (function), _tears (function), _leave (function), _shake (function), _blight (function), Play (function), _skipButton (function), SetChoices (function), _run (function), __index (table), OrbDefinition (function)
+
+local PixelSagaArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSagaArt)
+Members: Shapes (table)
+
+local PixelSagaMobFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSagaMobFX)
+Members: Quick (table), Register (function)
+
+local EncyclopediaView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.EncyclopediaView)
+Members: Open (function)
+
+local PixelUltraFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelUltraFX)
+Members: Budget (table), Stats (table), _toolkit (table), Install (function)
+
+local PixelUltraScenes = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelUltraScenes)
+Members: Build (function)
+
+local PixelUltraArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelUltraArt)
+Members: dchain_105 (table), bcut36_2 (table), onimaw_2 (table), seraph_fly1 (table), titanwall_1 (table), gclef_2 (table), gclef_1 (table), nova_4 (table), holyrune_2 (table), aegrune_2 (table), rclock_break_3 (table), heart_2 (table), heart_1 (table), avatar_4~2 (table), gclef_3 (table), doomgaze_1~2 (table), fmin_18 (table), halo (table), avatar_2 (table), greatsword (table), nova_3 (table), doomgaze_1 (table), gswing_1 (table), aegshield_2 (table), grandpiano_1 (table), aegshield_1 (table), singer_2 (table), ghostship_3~2 (table), wolf_run2~4 (table), rcres_3 (table), archgate_4 (table), wraithscream_1~2 (table), chasm_3 (table), wolf_run4~4 (table), hlance_4 (table), dl_aura_1 (table), wolf_run1~3 (table), rflame_4 (table), jshield_2 (table), hflame_4 (table), grift_2 (table), wraith_1~2 (table), wolf_howl1 (table), avatar_4 (table), tfoam_1 (table), fmin_17 (table), seraph_fly3~2 (table), wail_2 (table), vh_gate_4 (table), bmoon_2 (table), soul_1 (table), wolf_leap~3 (table), guard_3 (table), aeglance_4 (table), fhour_16 (table), aegrune_4 (table), wolf_run1~2 (table), dl_dragon_1 (table), scope (table), smokepuff_1 (table), nova_5~2 (table), champbelt_3 (table), hflame_2~2 (table), rcres_1 (table), aegshield_5 (table), voidhole_1 (table), piano (table), fhour_4 (table), wolf_howl2~3 (table), grandkeys (table), fhour_10 (table), doomeye_1 (table), hflame_6 (table), coin (table), voidhole_2 (table), sjavelin_30 (table), shawk_4 (table), thawk_4 (table), fmin_11 (table), wb_moon_1 (table), onimaw_1 (table), aethring_1 (table), fhour_18 (table), belt (table), ghostship_1~2 (table), seraph_fly2 (table), bcut144_1 (table), bcut36_1 (table), banshee (table), dchain_60 (table), seraph_wind (table), fsmear_2 (table), fhour_3 (table), bmoon_1 (table), doomeye_3~2 (table), ringbell_3 (table), onimaw_3 (table), rhound_4 (table), mglove_1 (table), wb_level_1 (table), wolf_bite~2 (table), star (table), stormcloud_2 (table), reticle_4~2 (table), doomsun_3~2 (table), hflame_3~2 (table), rclock_3 (table), stormcloud_1 (table), gsglint_2 (table), wb_pike_b (table), fscythe_swing3 (table), thawk_1 (table), chest_2 (table), seraph_embrace~2 (table), holyrune_4 (table), fhour_0 (table), trapjaw (table), aeghalo_2 (table), fmin_3 (table), jshield_5 (table), archgate_3 (table), spear (table), windwall_3 (table), tsuna_3 (table), nova_2~2 (table), demon_2 (table), seraph_open~2 (table), uppercut_40~2 (table), rcres_5 (table), dbreath_3 (table), toxcloud_3 (table), wail_3 (table), bcut144_3~2 (table), swindf_4 (table), fhour_21 (table), veil_1 (table), ringbell_1 (table), doomsun_2~2 (table), clockface (table), uppercut_10~3 (table), satellite_1 (table), jspear_1 (table), bcut72_3 (table), dchain_120 (table), firework_1 (table), shadowpool_1 (table), ghostship_fire (table), bcut36_2~2 (table), dl_dragon_3 (table), swindb_1 (table), seraph_wind~2 (table), ringbell_2 (table), hflame_1~2 (table), feather_4 (table), swindf_3 (table), snaptrap_2 (table), hawk (table), aeglance_1 (table), wing (table), smokepuff_2 (table), shootstar_3 (table), soul_2 (table), rclock_4 (table), orbitbeam_3 (table), mspot_1 (table), hflame_3 (table), nova_4~2 (table), grandpiano_3 (table), reticle_2 (table), rflame_3 (table), wolf_run4~2 (table), fhour_2 (table), ironmaw_1 (table), fmin_10 (table), doomgaze_4~2 (table), vh_gate_1 (table), gsglint_3 (table), titanwall_3 (table), chasm_1 (table), veil_3 (table), sjavelin_20 (table), singer_3 (table), blacksun (table), uppercut_40~3 (table), gswing_3 (table), dl_dragon_roar (table), heart_3 (table), rscythe_3 (table), shadowpool_3 (table), chasm_2 (table), champbelt_1 (table), dl_crest (table), pianometeor_2 (table), seraph_open (table), doomsun_2 (table), crescent (table), demon_4 (table), cleaverfall_2 (table), bcut108_2 (table), tsplash_4 (table), uppercut_40 (table), scloud_2 (table), veil_2 (table), archgate_1 (table), avatar_3 (table), sarrow (table), fscythe_swing1 (table), fclock_break_2 (table), aethring_2 (table), fhour_7 (table), windwall_1 (table), behe_roar (table), grift_3 (table), hlance_1 (table), fmin_1 (table), champbelt_2 (table), dl_aura_2 (table), wolf_run2~3 (table), reticle_4 (table), rflame_1 (table), wb_banner_2 (table), vh_valk_3 (table), wb_level_3 (table), wb_march_1 (table), kunai (table), bcut108_1 (table), swindf_1 (table), rclock_1 (table), wb_thrust (table), rclock_break_2 (table), hflame_1 (table), cleaverfall_4 (table), reticle_2~2 (table), scloud_1 (table), nightmoon_2 (table), wolf_howl1~3 (table), shield (table), bomb (table), eclipse_1 (table), dragon (table), dbreath_4 (table), reapsoul_1 (table), behe_idle1 (table), gclef_4 (table), lightlance (table), lwyvern_dive (table), palm (table), wraith_2 (table), doomeye_1~2 (table), glove (table), bcut144_1~2 (table), thawk_2 (table), shawk_2 (table), wolf_run3~3 (table), rscythe_4 (table), gdragon_2 (table), windwall_2 (table), veilopen_1 (table), gsglint_1 (table), vh_valk_1 (table), uppercut_70~2 (table), fscythe_rest (table), rclock_8 (table), fmin_6 (table), titanwall_2 (table), fhour_1 (table), grift_4 (table), wolf_leap (table), voidhole_4 (table), avatar_2~2 (table), rift_3 (table), reapsoul_2 (table), vh_dive (table), bcut0_1 (table), behe_rear (table), hlance_3 (table), aethring_4 (table), guard_1 (table), shootstar_1~2 (table), holybeam_1~3 (table), thawk_dive (table), sjavelin_40 (table), fmin_8 (table), wolf_howl1~2 (table), vh_gate_2 (table), lotus_4 (table), dl_chalice_1 (table), cleaverfall_1 (table), dl_chalice_2 (table), dl_aura_3 (table), aethring_3 (table), starlyre_3 (table), tfoam_2 (table), wb_banner_1 (table), starlyre_4 (table), tsplash_3 (table), holybeam_3 (table), jspear_2 (table), dbreath_1 (table), seraph_throw (table), wolf_run1~4 (table), dl_dragon_2 (table), dl_dragon_rear (table), scloud_3 (table), dl_chalice_pour (table), wraith_1 (table), dl_dragon_dive (table), rcres_2 (table), doomgaze_2 (table), vh_gate_3 (table), bcut144_2 (table), demon_1 (table), skyrift_2 (table), vh_cloud_a (table), vh_spear_2 (table), cleaverfall_3 (table), wb_level_2 (table), chest_3 (table), aeghalo_1 (table), bcut36_1~2 (table), bcut36_3~2 (table), vh_spear_3 (table), shootstar_3~2 (table), ghostship_2 (table), uppercut_70 (table), cannon (table), oni (table), voidhole_3 (table), dchain_30 (table), wb_moon_2 (table), spotlight_1 (table), orbitbeam_1 (table), wolf_run3~4 (table), wb_pike_a (table), uppercut_10 (table), swindf_2 (table), wb_moon_0 (table), wb_level_4 (table), tide_1 (table), lwyvern_fly4 (table), pianometeor_3 (table), nova_1 (table), wb_moon_3 (table), wb_march_2 (table), nova_5 (table), wb_march_4 (table), seraph_fly3 (table), starlyre_1 (table), fmin_2 (table), wb_banner_3 (table), fmin_4 (table), gdragon_4 (table), fmin_5 (table), vh_cloud_b (table), ltide_4 (table), gdragon_1 (table), tide_2 (table), fhour_12 (table), fmin_12 (table), chipalm~2 (table), fmin_9 (table), avatar_1~2 (table), fmin_19 (table), fhour_19 (table), tsuna_4 (table), shadowpool_2 (table), wolf_bite~4 (table), fmin_16 (table), rift_1 (table), dchain_0 (table), fmin_14 (table), eclipse_4 (table), holybeam_2 (table), fhour_20 (table), fmin_21 (table), fhour_22 (table), fmin_23 (table), dchain_90 (table), fclock_break_3 (table), eclipse_3 (table), tsplash_2 (table), chain (table), fscythe_swing2 (table), fscythe_raise (table), bcut36_3 (table), doomgaze_4 (table), shawk_dive (table), rclock_break_1 (table), shawk_3 (table), nova_3~2 (table), tsplash_1 (table), pianometeor_1 (table), fhour_23 (table), lotus_3 (table), fhour_17 (table), chest_1 (table), rcres_6 (table), scloud_4 (table), doomsun_4~2 (table), rhound_2 (table), tsuna_2 (table), fmin_15 (table), lwyvern_fly1 (table), aegspear (table), wb_march_3 (table), fhour_15 (table), fhour_13 (table), fhour_8 (table), firework_2 (table), hlance_2 (table), shootstar_1 (table), fhour_14 (table), tsuna_1 (table), fhour_9 (table), ltide_3 (table), swindb_3 (table), ltide_1 (table), satellite_2 (table), dchain_135 (table), hpalm_2 (table), uppercut_100 (table), hflame_4~2 (table), reticle_1~2 (table), holybeam_1~2 (table), avatar_3~2 (table), dchain_75 (table), gsglint_4 (table), fsmear_1 (table), fmin_7 (table), reticle_3 (table), bcut0_3 (table), fmin_0 (table), eclipse_2 (table), dbreath_2 (table), hpalm_3 (table), shootstar_2~2 (table), grift_1 (table), archgate_2 (table), rclock_6 (table), wraith_3 (table), holyrune_1 (table), gdragon_3 (table), guard_2 (table), fhour_11 (table), feather_1 (table), skyrift_3 (table), bcut144_3 (table), hpalm_1 (table), dchain_150 (table), galleon (table), fmin_13 (table), mspot_2 (table), firework_3 (table), fclock_break_1 (table), veilopen_2 (table), fclock_face (table), spotlight_2 (table), wail_4 (table), gswing_4 (table), jshield_4 (table), swindb_4 (table), shawk_1 (table), fmin_22 (table), heavengate_3 (table), ltide_2 (table), aegshield_4 (table), heavengate_1 (table), lotus_1 (table), jshield_1 (table), wb_crest (table), vh_valk_2 (table), wolf_bite (table), toxcloud_1 (table), feather_2 (table), mglove_2 (table), holybeam_1 (table), wolf_howl2 (table), wolf_leap~2 (table), uppercut_10~2 (table), hflame_6~2 (table), toxcloud_4 (table), ghostship_2~2 (table), reticle_1 (table), doomeye_3 (table), wraithscream_2~2 (table), aeghalo_3 (table), aegrune_1 (table), doomgaze_2~2 (table), fhour_6 (table), gswing_5 (table), ironmaw_4 (table), ironmaw_3 (table), starlyre_2 (table), doomsun_1 (table), rhound_3 (table), hflame_5 (table), aeglance_3 (table), wraithscream_1 (table), uppercut_70~3 (table), reticle_3~2 (table), aeghalo_6 (table), aegrune_3 (table), aegshield_3 (table), doomsun_3 (table), ghostship_fire~2 (table), vh_spear_1 (table), heavengate_2 (table), rhound_bite (table), lwyvern_roar (table), swindb_2 (table), holybeam_2~2 (table), behe_idle2 (table), doomsun_1~2 (table), rclock_7 (table), rhound_1 (table), aeghalo_5 (table), holybeam_3~3 (table), bloodmoon (table), grandpiano_4 (table), dchain_15 (table), holyrune_3 (table), nightmoon_3 (table), fmin_20 (table), rift_2 (table), rift_4 (table), hflame_5~2 (table), lyre (table), behe_slam (table), bcut108_3 (table), rift_5 (table), wolf_howl2~2 (table), holybeam_3~2 (table), rift_6 (table), smokepuff_4 (table), grift_5 (table), smokepuff_3 (table), doomgaze_3 (table), rift_7 (table), doomgaze_3~2 (table), lotus_2 (table), rflame_2 (table), avatar_1 (table), lwyvern_fly3 (table), bcut72_1 (table), skyrift_1 (table), rflame_5 (table), rhound_leap (table), wolf_howl2~4 (table), firework_5 (table), wolf_run1 (table), dl_chalice_3 (table), nova_2 (table), rclock_5 (table), aeghalo_4 (table), bcut0_2 (table), snaptrap_1 (table), skyrift_4 (table), archgate_5 (table), aeglance_2 (table), demon_3 (table), ironmaw_2 (table), wolf_leap~4 (table), smokepuff_5 (table), firework_4 (table), scythe (table), bcut72_2 (table), wolf_run3 (table), sjavelin_10 (table), wail_1 (table), wolf_run2 (table), wolf_run2~2 (table), doomsun_4 (table), wolf_run4 (table), cleaver (table), singer_1 (table), veil_4 (table), chipalm (table), wolf_howl1~4 (table), dchain_45 (table), beartrap (table), clef (table), wolf_run3~2 (table), ghostship_1 (table), wolf_run4~3 (table), toxcloud_2 (table), dchain_165 (table), wolf_bite~3 (table), rclock_mid (table), rscythe_2 (table), shootstar_2 (table), gate (table), rclock_2 (table), rcres_4 (table), doomeye_2 (table), seraph_fly2~2 (table), grandpiano_2 (table), rscythe_1 (table), tide_4 (table), holybeam_2~3 (table), seraph_fly1~2 (table), ghostship_3 (table), orbitbeam_2 (table), gswing_2 (table), uppercut_100~2 (table), windwall_4 (table), thawk_3 (table), snaptrap_3 (table), bmoon_3 (table), jshield_3 (table), rflame_6 (table), nightmoon_1 (table), wraith_3~2 (table), bcut144_2~2 (table), tide_3 (table), wraithscream_2 (table), toxcloud_5 (table), stormcloud_3 (table), wraith_2~2 (table), lwyvern_fly2 (table), nova_1~2 (table), seraph_throw~2 (table), hflame_2 (table), uppercut_100~3 (table), fhour_5 (table), seraph_embrace (table), feather_3 (table), doomeye_2~2 (table)
+
+local UltraAwakening = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraAwakening)
+Members: Play (function), PlayTome (function)
+
+[LocalScript] UltraAwakeningClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraAwakeningClient
+
+local UltraArt_Bloodreaver = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Bloodreaver)
+Members: bcut144_3~2 (table), bmoon_2 (table), bcut36_2 (table), cleaverfall_3 (table), bcut144_3 (table), bcut36_1~2 (table), bcut36_3~2 (table), rflame_6 (table), bcut144_1 (table), bcut36_1 (table), bcut72_3 (table), bcut144_1~2 (table), rflame_3 (table), bcut108_3 (table), rflame_1 (table), heart_2 (table), bcut36_2~2 (table), heart_1 (table), rflame_4 (table), rflame_2 (table), cleaverfall_2 (table), bcut72_1 (table), bcut108_2 (table), rflame_5 (table), bcut144_2~2 (table), bcut144_2 (table), heart_3 (table), bcut36_3 (table), bcut0_2 (table), bcut0_1 (table), bcut72_2 (table), bcut108_1 (table), bcut0_3 (table), cleaverfall_4 (table), cleaverfall_1 (table), bmoon_3 (table), bmoon_1 (table)
+
+local UltraArt_Aegis = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Aegis)
+Members: hlance_2 (table), jshield_1 (table), jshield_5 (table), holyrune_1 (table), guard_2 (table), guard_3 (table), hlance_3 (table), jshield_3 (table), guard_1 (table), holyrune_4 (table), holyrune_3 (table), hlance_1 (table), jspear_1 (table), heavengate_3 (table), jspear_2 (table), jshield_4 (table), holyrune_2 (table), heavengate_1 (table), jshield_2 (table), hlance_4 (table), heavengate_2 (table)
+
+local UltraArt_Worldcleaver = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Worldcleaver)
+Members: gsglint_2 (table), gswing_3 (table), gsglint_1 (table), skyrift_1 (table), titanwall_1 (table), chasm_2 (table), titanwall_2 (table), gsglint_3 (table), titanwall_3 (table), gswing_5 (table), gsglint_4 (table), chasm_1 (table), skyrift_4 (table), skyrift_2 (table), skyrift_3 (table), chasm_3 (table), gswing_2 (table), gswing_4 (table), gswing_1 (table)
+
+local UltraArt_Shadowbroker = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Shadowbroker)
+Members: ironmaw_4 (table), ironmaw_1 (table), smokepuff_3 (table), firework_2 (table), ironmaw_3 (table), smokepuff_2 (table), firework_3 (table), shadowpool_3 (table), toxcloud_5 (table), toxcloud_4 (table), firework_5 (table), toxcloud_3 (table), toxcloud_1 (table), ironmaw_2 (table), toxcloud_2 (table), firework_4 (table), snaptrap_3 (table), snaptrap_1 (table), smokepuff_4 (table), shadowpool_2 (table), smokepuff_1 (table), firework_1 (table), shadowpool_1 (table), snaptrap_2 (table), smokepuff_5 (table)
+
+local UltraArt_Reaper = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Reaper)
+Members: veil_3 (table), veilopen_2 (table), veil_1 (table), veilopen_1 (table), veil_4 (table), veil_2 (table)
+
+local UltraArt_Seraph = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Seraph)
+Members: seraph_fly3 (table), sjavelin_40 (table), holybeam_2~2 (table), holybeam_1 (table), sjavelin_30 (table), feather_2 (table), holybeam_2~3 (table), seraph_fly1~2 (table), feather_1 (table), seraph_fly2 (table), seraph_embrace~2 (table), sjavelin_20 (table), sjavelin_10 (table), seraph_wind~2 (table), holybeam_3 (table), holybeam_3~3 (table), seraph_throw~2 (table), holybeam_1~3 (table), seraph_open~2 (table), holybeam_1~2 (table), seraph_wind (table), feather_4 (table), holybeam_2 (table), seraph_throw (table), seraph_open (table), seraph_fly3~2 (table), seraph_fly1 (table), holybeam_3~2 (table), seraph_embrace (table), feather_3 (table), seraph_fly2~2 (table)
+
+local UltraArt_Archon = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Archon)
+Members: archgate_1 (table), aethring_1 (table), archgate_3 (table), gdragon_3 (table), dbreath_4 (table), aethring_2 (table), gdragon_4 (table), aethring_3 (table), archgate_5 (table), archgate_4 (table), dbreath_2 (table), dbreath_1 (table), gdragon_2 (table), gdragon_1 (table), archgate_2 (table), dbreath_3 (table), aethring_4 (table)
+
+local UltraArt_Doomcaller = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Doomcaller)
+Members: dchain_105 (table), doomsun_3 (table), dchain_75 (table), dchain_90 (table), doomsun_2~2 (table), doomeye_2 (table), doomsun_1~2 (table), doomgaze_4 (table), dchain_45 (table), eclipse_2 (table), dchain_15 (table), doomeye_2~2 (table), doomeye_1~2 (table), dchain_120 (table), doomsun_4~2 (table), doomgaze_2~2 (table), dchain_150 (table), doomsun_2 (table), doomgaze_3 (table), doomgaze_3~2 (table), doomsun_1 (table), doomgaze_4~2 (table), doomeye_3~2 (table), doomeye_1 (table), voidhole_3 (table), dchain_165 (table), doomeye_3 (table), eclipse_3 (table), voidhole_1 (table), eclipse_4 (table), voidhole_2 (table), doomsun_3~2 (table), eclipse_1 (table), doomgaze_2 (table), doomgaze_1 (table), doomsun_4 (table), doomgaze_1~2 (table), dchain_135 (table), dchain_60 (table), dchain_30 (table), dchain_0 (table), voidhole_4 (table)
+
+local UltraArt_Shura = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Shura)
+Members: onimaw_1 (table), onimaw_3 (table), hflame_5 (table), onimaw_2 (table), hflame_4 (table), demon_4 (table), hflame_6~2 (table), hflame_6 (table), demon_2 (table), demon_3 (table), hflame_1~2 (table), hflame_3 (table), hflame_3~2 (table), hflame_5~2 (table), hflame_4~2 (table), demon_1 (table), hflame_1 (table), hflame_2~2 (table), hflame_2 (table)
+
+local UltraArt_Transcendent = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Transcendent)
+Members: avatar_2~2 (table), avatar_3 (table), chipalm~2 (table), lotus_4 (table), avatar_1~2 (table), avatar_4~2 (table), avatar_2 (table), lotus_3 (table), avatar_1 (table), lotus_2 (table), avatar_3~2 (table), chipalm (table), lotus_1 (table), avatar_4 (table)
+
+local UltraArt_Undisputed = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Undisputed)
+Members: uppercut_100 (table), uppercut_40~3 (table), ringbell_1 (table), uppercut_100~2 (table), uppercut_70~2 (table), uppercut_10~2 (table), ringbell_2 (table), uppercut_10~3 (table), champbelt_1 (table), uppercut_40~2 (table), champbelt_2 (table), uppercut_40 (table), spotlight_2 (table), uppercut_100~3 (table), uppercut_70 (table), uppercut_10 (table), ringbell_3 (table), champbelt_3 (table), spotlight_1 (table), uppercut_70~3 (table)
+
+local UltraArt_Banshee = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Banshee)
+Members: wail_1 (table), wraith_3 (table), soul_1 (table), wraith_2~2 (table), wraithscream_2 (table), soul_2 (table), wraith_1~2 (table), tide_3 (table), wraithscream_2~2 (table), wraith_2 (table), wail_4 (table), wraith_1 (table), wraithscream_1 (table), wraith_3~2 (table), wraithscream_1~2 (table), wail_2 (table), wail_3 (table), tide_2 (table), tide_4 (table), tide_1 (table)
+
+local UltraArt_Songweaver = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Songweaver)
+Members: shootstar_2~2 (table), nova_1 (table), nova_5 (table), nova_1~2 (table), shootstar_1 (table), starlyre_1 (table), shootstar_3 (table), shootstar_3~2 (table), singer_1 (table), shootstar_1~2 (table), nova_3~2 (table), starlyre_4 (table), nova_2 (table), nova_4 (table), nova_4~2 (table), starlyre_3 (table), starlyre_2 (table), shootstar_2 (table), singer_3 (table), nova_5~2 (table), singer_2 (table), nova_3 (table), nova_2~2 (table)
+
+local UltraArt_Virtuoso = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Virtuoso)
+Members: nightmoon_2 (table), pianometeor_3 (table), grandpiano_4 (table), pianometeor_1 (table), pianometeor_2 (table), grandpiano_1 (table), grandpiano_3 (table), nightmoon_3 (table), grandpiano_2 (table), nightmoon_1 (table)
+
+local PixelImage = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelImage)
+Members: Label (function), Ready (function), Supported (function), Get (function)
+
+local UltraArt_DreadCaptain = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_DreadCaptain)
+Members: ghostship_2 (table), ghostship_3 (table), ghostship_1 (table), ghostship_1~2 (table), chest_1 (table), chest_2 (table), ghostship_fire~2 (table), ghostship_3~2 (table), chest_3 (table), ghostship_2~2 (table), ghostship_fire (table)
+
+local UltraArt_Godshot = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Godshot)
+Members: reticle_3~2 (table), reticle_4~2 (table), reticle_1~2 (table), satellite_2 (table), satellite_1 (table), orbitbeam_1 (table), orbitbeam_2 (table), reticle_2 (table), reticle_4 (table), reticle_3 (table), reticle_2~2 (table), orbitbeam_3 (table), reticle_1 (table)
+
+local UltraArt_Stormhawk = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Stormhawk)
+Members: windwall_1 (table), thawk_dive (table), windwall_2 (table), stormcloud_3 (table), thawk_3 (table), windwall_3 (table), thawk_1 (table), stormcloud_1 (table), thawk_2 (table), thawk_4 (table), windwall_4 (table), stormcloud_2 (table)
+
+local UltraArt_Beastlord = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Beastlord)
+Members: wolf_bite~3 (table), wolf_run4~4 (table), wolf_bite (table), wolf_run1~3 (table), wolf_run4~3 (table), wolf_run3~4 (table), wolf_run2 (table), wolf_run2~4 (table), wolf_howl2~3 (table), wolf_run3~2 (table), wolf_howl2 (table), wolf_bite~2 (table), wolf_howl2~2 (table), wolf_howl2~4 (table), wolf_howl1~4 (table), wolf_run1~2 (table), wolf_bite~4 (table), wolf_run4 (table), wolf_run1 (table), wolf_run3~3 (table), wolf_run2~3 (table), wolf_leap~3 (table), wolf_howl1~3 (table), wolf_run2~2 (table), wolf_howl1 (table), wolf_run1~4 (table), wolf_leap~2 (table), wolf_leap (table), wolf_run3 (table), wolf_run4~2 (table), wolf_leap~4 (table), wolf_howl1~2 (table)
+
+local UltraArt_ReaperTime = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_ReaperTime)
+Members: rcres_1 (table), reapsoul_2 (table), rclock_6 (table), rclock_7 (table), rscythe_1 (table), rclock_break_1 (table), rscythe_3 (table), reapsoul_1 (table), rclock_4 (table), rclock_1 (table), rclock_8 (table), rscythe_4 (table), rclock_break_2 (table), rclock_5 (table), rcres_2 (table), rcres_6 (table), rcres_4 (table), rclock_3 (table), rcres_5 (table), rcres_3 (table), rclock_2 (table), rscythe_2 (table), rclock_mid (table), rclock_break_3 (table)
+
+local UltraArt_VirtuosoFinale = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_VirtuosoFinale)
+Members: gclef_3 (table), gclef_1 (table), gclef_2 (table), gclef_4 (table), grandkeys (table)
+
+local GuildBaseArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuildBaseArt)
+Members: Outline (Color3), Animated (function), Core (function), Art (table), CoreLamps (table), Definition (function)
+
+local GuildBaseView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuildBaseView)
+Members: ShowReport (function), _cover (function), _expeditionsTab (function), Relayout (function), _popFocus (function), Toast (function), _soulKey (function), _send (function), _soulSelect (function), _milestonesTab (function), _cancelDrag (function), Open (function), _editTray (function), _decorZ (function), _buildable (function), _storyTab (function), _station (function), _hud (function), _partyPanel (function), _decorData (function), _tile (function), IsOpen (function), Event (function), _tabs (function), _build (function), _drop (function), _endDrag (function), _closePanel (function), _soulHeader (function), _show (function), _soulRefresh (function), _keys (function), _startDrag (function), _safeInsets (function), _trophyIcon (function), _color (function), _dropDecor (function), _facilitiesTab (function), _vaultPanel (function), _decorPosition (function), _shopPanel (function), _trophyPanel (function), _yard (function), _hoardPanel (function), Suspend (function), _size (function), _hoardLootPanel (function), _raidReportPanel (function), _raidPanel (function), _lockText (function), Close (function), _yardPanel (function), _soulSide (function), _vista (function), _soulFeeders (function), _soulTreeTab (function), _newDecorSprite (function), _soulStop (function), _corePanel (function), _treasuryTab (function), _coreLevel (function), __index (table), new (function), _soulFeedRow (function), _decorFraction (function), _trophyShelves (function), _flushPending (function), _warPanel (function), _openPanel (function), _scenePoint (function), _selectDecor (function), _drawDecor (function), _setEditing (function), _milestonesWaiting (function), _updateDecor (function), _raidGate (function), _reportPanel (function), _vaultTile (function), _spreadPlates (function)
+
+local PixelPets = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelPets)
+Members: Outline (Color3), Animations (table), Art (table), Width (number), Flying (table), Height (number), Egg (function), Draw (function), Definition (function)
+
+local RanchView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RanchView)
+Members: _eggs (function), _cover (function), Relayout (function), _food (function), _petFuse (function), _buildScene (function), _forgetDeadSprites (function), _size (function), _buildHud (function), _safeInsets (function), _buildWalkers (function), _send (function), _requestHatch (function), _tier (function), _fuseInfo (function), _flourish (function), _openPanel (function), Suspend (function), _pet (function), _playHatch (function), _afterHatch (function), _tabRanch (function), _panelSize (function), Close (function), _teardown (function), _step (function), _pets (function), _closePanel (function), _tabEggs (function), _drawPanel (function), _petAbilities (function), _stagePopup (function), _petPage (function), _selectPet (function), __index (table), new (function), _renderPanel (function), IsOpen (function), _tabPets (function), _petFeed (function), _petCard (function), Refresh (function), _top (function), _hatchCinematic (function), _tabHatchResults (function), _profile (function), _rosterKey (function), _cheer (function), Toast (function), _knowledge (function), Event (function), Open (function)
+
+local RanchArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RanchArt)
+Members: Outline (Color3), Definition (function), Palette (table)
+
+[LocalScript] JourneyClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.JourneyClient
+
+local GuildDecorArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuildDecorArt)
+Members: Outline (Color3), Art (table), Definition (function), Size (function)
+
+local PixelSetFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSetFX)
+Members: Palette (function), PowerOf (function), Play (function), Definition (function)
+
+local ClassPickerView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ClassPickerView)
+Members: Open (function)
+
+local UltraArt_ArchonBeasts = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_ArchonBeasts)
+Members: lwyvern_fly4 (table), rift_3 (table), rhound_leap (table), grift_1 (table), rhound_4 (table), lwyvern_fly3 (table), rift_7 (table), behe_rear (table), grift_5 (table), rift_6 (table), behe_idle1 (table), rift_5 (table), behe_slam (table), rift_4 (table), lwyvern_dive (table), behe_roar (table), grift_3 (table), rift_2 (table), rift_1 (table), rhound_3 (table), lwyvern_fly2 (table), rhound_1 (table), grift_4 (table), rhound_2 (table), behe_idle2 (table), lwyvern_roar (table), rhound_bite (table), grift_2 (table), lwyvern_fly1 (table)
+
+local UltraArt_AegisPixel = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_AegisPixel)
+Members: aegspear (table), aegshield_3 (table), aegshield_5 (table), aegrune_3 (table), aegshield_2 (table), aeghalo_6 (table), aegshield_1 (table), aeglance_3 (table), aeghalo_5 (table), aegrune_4 (table), aeghalo_2 (table), aeglance_4 (table), aegrune_1 (table), aeghalo_4 (table), aeghalo_3 (table), aeglance_2 (table), aeghalo_1 (table), aegrune_2 (table), aeglance_1 (table), aegshield_4 (table)
+
+local UltraArt_Redraw = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Redraw)
+Members: fscythe_raise (table), fscythe_swing3 (table), fscythe_swing1 (table), fclock_break_2 (table), shawk_1 (table), swindb_4 (table), fhour_16 (table), fhour_7 (table), fclock_face (table), mspot_1 (table), tsuna_2 (table), fhour_23 (table), mspot_2 (table), fmin_13 (table), fmin_1 (table), fmin_8 (table), fmin_3 (table), fhour_15 (table), fhour_2 (table), fhour_14 (table), fmin_10 (table), fhour_4 (table), hpalm_3 (table), fmin_0 (table), fmin_7 (table), fsmear_1 (table), tsuna_3 (table), tfoam_2 (table), tsplash_3 (table), hpalm_2 (table), shawk_4 (table), scloud_3 (table), fmin_11 (table), scloud_1 (table), ltide_1 (table), swindb_3 (table), swindf_4 (table), ltide_3 (table), fhour_18 (table), fhour_9 (table), tsuna_1 (table), swindf_3 (table), fhour_11 (table), swindb_2 (table), fhour_8 (table), fhour_13 (table), hpalm_1 (table), swindf_2 (table), swindb_1 (table), fmin_15 (table), swindf_1 (table), sarrow (table), fclock_break_1 (table), scloud_4 (table), scloud_2 (table), shawk_dive (table), tsplash_1 (table), shawk_3 (table), fhour_3 (table), shawk_2 (table), fsmear_2 (table), fmin_22 (table), fhour_17 (table), ltide_2 (table), fscythe_swing2 (table), tsplash_2 (table), fclock_break_3 (table), fmin_23 (table), fhour_22 (table), fhour_21 (table), fmin_21 (table), fhour_20 (table), mglove_1 (table), mglove_2 (table), fmin_14 (table), fmin_2 (table), fmin_20 (table), fmin_16 (table), tsuna_4 (table), fhour_19 (table), fscythe_rest (table), fmin_18 (table), fmin_19 (table), tsplash_4 (table), fmin_9 (table), fmin_6 (table), fmin_12 (table), fhour_1 (table), fhour_12 (table), tfoam_1 (table), fhour_10 (table), fmin_17 (table), fhour_6 (table), ltide_4 (table), fhour_5 (table), fmin_5 (table), fmin_4 (table), fhour_0 (table)
+
+local PixelRaidArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidArt)
+Members: Bosses (table), Shapes (table)
+
+local PixelRaidFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidFX)
+Members: Roar (function), Roars (table), Intro (function), Register (function), Cinematic (function), Ambience (function), HasCinematic (function)
+
+local MenuDragonArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MenuDragonArt)
+Members: palette (table), eyes (table), eye (Vector2), height (number), nose (Vector2), base (table), width (number)
+
+local MenuDragonIntro = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MenuDragonIntro)
+Members: Destroy (function), HandOff (function), Idle (function), Play (function), _embers (function), Owner (function), SetEye (function), _tweenLevel (function), _flames (function), WaitReady (function), _light (function), _shake (function), Release (function), Acquire (function), __index (table), new (function)
+
+local SafeArea = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SafeArea)
+Members: ScaleOf (function), Changed (function), Insets (function)
+
+local LineageArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.LineageArt)
+Members: Outline (Color3), Definition (function), Height (number), Width (number)
+
+[LocalScript] RunResumeScreen
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RunResumeScreen
+
+local LoadingCard = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.LoadingCard)
+Members: Show (function), Hide (function), IsShowing (function), DisplayOrder (number)
+
+local PixelRaidArtFrost = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidArtFrost)
+Members: Bosses (table), Shapes (table)
+
+local PixelRaidFXFrost = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidFXFrost)
+Members: AbsoluteZero (function), Register (function), Tidy (function), Cinematic (function), Ambience (function), Intro (function)
+
+local PixelRaidFXBarrow = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidFXBarrow)
+Members: Tribute (function), Intro (function), Register (function), Tidy (function), Ambience (function), Cinematic (function)
+
+local PixelRaidArtBarrow = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidArtBarrow)
+Members: Bosses (table), Shapes (table)
+
+local PixelRaidFXFire = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelRaidFXFire)
+Members: Register (function), Tidy (function), Cataclysm (function)
+
+local AdminGiveaway = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminGiveaway)
+Members: Render (function), Done (function)
+
+local AdminStats = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminStats)
+Members: Data (function), Render (function)
+
+local LineageBoardView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.LineageBoardView)
+Members: Data (function), Open (function), Close (function)
+
+local HiddenWorld = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.HiddenWorld)
+Members: Void (CFrame), Start (function)
+
+local HalloweenVillage = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.HalloweenVillage)
+Members: WitchDefinition (table), WitchPalette (table), Build (function)
+
+local PixelHalloweenArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelHalloweenArt)
+Members: Bosses (table), Shapes (table)
+
+local PixelHalloweenFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelHalloweenFX)
+Members: Register (function), Quick (table), HarvestMoon (function)
+
+local PixelPumpkinKingFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelPumpkinKingFX)
+Members: Register (function), Ids (table), Tidy (function), HarvestMoon (function)
+
+local PixelStarfallFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelStarfallFX)
+Members: Play (function), Impact (number)
+
+local PixelHitFeel = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelHitFeel)
+Members: Read (function), Burst (function), Tint (function), Accent (function), Feel (table), KeyFor (function), KickScale (function)
+
+local PixelOverkill = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelOverkill)
+Members: Show (function), Tiers (table), Text (function), Tier (function)
+
+[LocalScript] ForceLandscape
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ForceLandscape
+
+local BloodlineAltarView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BloodlineAltarView)
+Members: Result (function), IsOpen (function), Close (function), OddsRow (function), Emblem (function), Refresh (function), Open (function), ItemIcon (function)
+
+local BloodlineCeremony = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BloodlineCeremony)
+Members: Play (function)
+
+[LocalScript] BloodlineCeremonyClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BloodlineCeremonyClient
+
+local BloodlineChestFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BloodlineChestFX)
+Members: Card (function), Palette (function), Landed (function), Colors (function), Bone (Color3), Loot (function), Revealed (function), IsWhite (function), Bleach (function)
+
+local GiftShopView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GiftShopView)
+Members: UnsentKey (function), Catalog (function), Close (function), Rows (function), Find (function), Pick (function), Event (function), Remote (function), PaidRandom (table), List (function), Request (function), Status (function), Open (function), Finish (function)
+
+local PixelBloodlineFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBloodlineFX)
+Members: Rally (function), Play (function), Traits (table)
+
+local PixelFinishers = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelFinishers)
+Members: Icon (function), Styles (table), Play (function), Labels (table)
+
+local BuildSheetClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BuildSheetClient)
+Members: Loadouts (function), Signature (function), OnChange (function), Send (function), Sheet (function)
+
+local TauntMenu = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TauntMenu)
+Members: Destroy (function), Open (function), Busy (function), Close (function), Mount (function), _step (function), __index (table), _wake (function)
+
+local MarketplaceView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MarketplaceView)
+Members: IsOpen (function), Close (function), HudButton (function), Open (function), Selected (function)
+
+[LocalScript] MarketClient
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MarketClient
+
+local HeroCosmetics = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.HeroCosmetics)
+Members: Styles (function), Finisher (function), Start (function), Attach (function), SendTaunt (function), PlayTaunt (function), TauntCooldown (function)
+
+local PixelTaunts = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelTaunts)
+Members: Styles (table), PlayIn (function), Icon (function), Durations (table), Play (function)
+
+local PlazaArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PlazaArt)
+Members: Show (function), Backdrop (function), PaintBackdrop (function), Label (function), Pad (number), Free (function), Supported (function), Sheet (function)
+
+local PixelAuras = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelAuras)
+Members: Destroy (function), Styles (table), Burst (function), every (function), Step (function), SetVisible (function), _clearParticles (function), __index (table), new (function)
+
+local PlazaView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PlazaView)
+Members: Relayout (function), _layout (function), _toWorld (function), _headroom (function), _showEntry (function), _size (function), _buildHud (function), _safeInsets (function), _pickShown (function), _send (function), _sync (function), Open (function), _toScreen (function), Suspend (function), _cosmetics (function), Close (function), _teardown (function), _step (function), _placeWings (function), _wingSheet (function), _watchStick (function), _watchPlayers (function), _drawPet (function), _drawEntry (function), __index (table), new (function), _refreshCount (function), IsOpen (function), _heldDirection (function), _sendMove (function), _walkTo (function), _pet (function), _top (function), _dropVisuals (function), _pause (function), _trimHeroSheets (function), _heroSheet (function), _queue (function), _build (function), _runQuick (function), _removeEntry (function), Toast (function)
+
+local GuildBaseWalk = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuildBaseWalk)
+Members: _changed (function), Close (function), Draw (function), _add (function), Open (function), _place (function), Step (function), _send (function), Z (function), _newcomer (function), ToStation (function), To (function), _drop (function)
+
+local PixelBraceFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBraceFX)
+Members: Sync (function), Cue (function)
+
+local ArenaView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ArenaView)
+Members: Tab (function), IsOpen (function), Close (function), HudButton (function), Open (function), Invite (function)
+
+local PixelKeyDungeonFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelKeyDungeonFX)
+Members: Grips (table), Supports (table), Support (function), Buff (function), Kit (table), Buffs (table), Play (function), Moves (table)
+
+local PixelDungeonBossArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelDungeonBossArt)
+Members: Enemy (function)
+
+local PixelGardenArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelGardenArt)
+Members: Scene (function), Enemy (function)
+
+local BattleMenuLayout = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleMenuLayout)
+Members: Build (function)
+
+local PixelCastleArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelCastleArt)
+Members: Scene (function), Enemy (function)
+
+local ViewportObserver = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ViewportObserver)
+Members: Watch (function)
+
+local DungeonKeyView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DungeonKeyView)
+Members: Open (function)
+
+local CursedBoxView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CursedBoxView)
+Members: RarityColor (function), Render (function)
+
+local CosmeticInventory = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CosmeticInventory)
+Members: Read (function), Watch (function), Activate (function)
+
+local BlightedKeyView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BlightedKeyView)
+Members: Render (function)
+
+local CommerceLayout = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.CommerceLayout)
+Members: Window (function), Market (function), Trade (function)
+
+local BattleViewportLayout = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleViewportLayout)
+Members: Stage (function), Scenery (function)
+
+local PixelJungleArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelJungleArt)
+Members: Scene (function), Enemy (function)
+
+local EmberForgeView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.EmberForgeView)
+Members: Render (function)
+
+local PixelJungleBeasts = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelJungleBeasts)
+Members: Enemy (function)
+
+local PotionShopView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PotionShopView)
+Members: Build (function)
+
+local PixelDungeonBossFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelDungeonBossFX)
+Members: Matches (function), Play (function), Moves (table)
+
+local TormentEmberShop = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.TormentEmberShop)
+Members: State (function), Tabs (table), Amount (function), Kit (function), Render (function)
+
+local SkillBookView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SkillBookView)
+Members: Mount (function)
+
+local EggSaleView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.EggSaleView)
+Members: Render (function), Open (function), Back (function)
+
+local GuiVisibility = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuiVisibility)
+Members: IsShown (function)
+
+local IncomingInvites = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.IncomingInvites)
+Members: Show (function)
+
+local StatResetItemView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.StatResetItemView)
+Members: Render (function)
+
+local DefensePresentationClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DefensePresentationClient)
+Members: Prepare (function), __index (table), new (function)
+
+local FatebrandItemView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.FatebrandItemView)
+Members: Render (function)
+
+local MarketGiftView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.MarketGiftView)
+Members: Open (function), Close (function)
+
+[LocalScript] DisableReset
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.DisableReset
+
+local AdminGearEditor = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminGearEditor)
+Members: Request (function), Data (function), Render (function)
+
+local AdminAuctionView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminAuctionView)
+Members: Render (function)
+
+local AuctionReceiptView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AuctionReceiptView)
+Members: Make (function), Summary (function), Colors (table), Stack (function), Button (function), Text (function), Edge (function), Receipt (function)
+
+local AdminTheme = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminTheme)
+Members: Heading (function), Choices (function), Icon (function), Notice (function), Text (function), Record (function), Body (function), Soften (function), Font (function), Colors (table), Stack (function), Button (function), Make (function), Edge (function), Field (function)
+
+local PixelTormentArmor = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelTormentArmor)
+Members: Helmets (table), Chests (table), Legs (table), Colors (table), Capes (table)
+
+local PixelBattleStep = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBattleStep)
+Members: Grow (function), Fit (function), Sweep (function), Mote (function), Box (function), Size (function)
+
+local FlashSafety = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.FlashSafety)
+Members: Burst (number), Tint (function), PerSecond (number), Calm (function), Bright (function), Rate (function), Wash (function), SpriteMix (number), Safe (function), Faint (number), Here (function), MaxHz (number), Attribute (string), Allow (function)
+
+local SlotLifeRestoreView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SlotLifeRestoreView)
+Members: Open (function), Close (function)
+
+local PixelUltraScenesSpear = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelUltraScenesSpear)
+Members: Build (function)
+
+local AdminConsoleViews = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminConsoleViews)
+Members: Data (function), Render (function)
+
+local AdminStaffPages = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminStaffPages)
+Members: Clear (function), Contains (function), Render (function)
+
+local RecordView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.RecordView)
+Members: Stamp (function), Details (function), Text (function), Receipt (function), ReceiptLines (function), Amount (function), Button (function), Make (function), Card (function), Input (function)
+
+local AdminConsoleModel = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminConsoleModel)
+Members: Badge (function), VisibleRange (function), IsArmed (function), IsFight (function), ClassBlocks (function), RECENT_MAX (number), Metrics (table), SEARCH_DELAY (number), Spread (function), GroupHits (function), KeyBlocks (function), Ticket (function), SectionCounts (function), WithMetrics (function), CountByTab (function), Remember (function), SearchBlocks (function), Rank (function), ToolsIn (function), Key (function), Press (function), CONFIRM_MIN (number), Selected (function), Layout (function), ChipWidth (function), CONFIRM_SECONDS (number), Columns (function), NewConfirm (function), GearBlocks (function), ToolBlocks (function), Groups (function), Query (function), IsCurrent (function), Expire (function)
+
+local PixelStatusBadges = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelStatusBadges)
+Members: UNTIL_HIT (table), Group (function), Set (function)
+
+local UltraArt_Warbringer = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Warbringer)
+Members: wb_march_3 (table), wb_crest (table), wb_march_4 (table), wb_march_2 (table), wb_level_3 (table), wb_march_1 (table), wb_level_1 (table), wb_level_2 (table), wb_moon_3 (table), wb_level_4 (table), wb_thrust (table), wb_banner_1 (table), wb_moon_0 (table), wb_banner_3 (table), wb_banner_2 (table), wb_pike_b (table), wb_pike_a (table), wb_moon_2 (table), wb_moon_1 (table)
+
+local PixelSpearFX = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSpearFX)
+Members: Install (function)
+
+local UltraArt_Dragonlord = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Dragonlord)
+Members: dl_dragon_1 (table), dl_aura_1 (table), dl_crest (table), dl_chalice_1 (table), dl_dragon_3 (table), dl_dragon_roar (table), dl_chalice_pour (table), dl_dragon_rear (table), dl_dragon_2 (table), dl_chalice_3 (table), dl_aura_2 (table), dl_aura_3 (table), dl_chalice_2 (table), dl_dragon_dive (table)
+
+local AuctionHistoryView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AuctionHistoryView)
+Members: Render (function), Data (function)
+
+local ModPanelClient = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ModPanelClient)
+Members: _area (function), Destroy (function), _openTab (function), _history (function), SetOpen (function), _lookup (function), _heroRow (function), _renderLog (function), _send (function), _refreshSummary (function), _paintSend (function), _counter (function), _fillCard (function), _paintHints (function), __index (table), new (function), _fillHistory (function), _finish (function), _setStatus (function), _caps (function), _renderRestore (function), Layout (function), _input (function), Render (function), _grow (function), IsOwner (function), _fire (function), _request (function), _build (function), _result (function), _paintLeft (function), _answer (function)
+
+local PixelExpeditionArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelExpeditionArt)
+Members: Caverns (function), Ruins (function), Tower (function), Enemy (function)
+
+local SoulTreeArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SoulTreeArt)
+Members: IgniteTiming (table), Progress (function), Rows (number), Awaken (function), Cols (number), DefaultSelection (function), IgniteDone (function), Diamond (function), TreeMethods (table), Roman (table), Looks (table), Layout (function), Draw (function), Rune (function), State (function), FruitIcon (function), Colors (table), Blit (function), Fruits (function), Random (function), PlaceArt (table), FeedRows (function)
+
+local SkyArenaArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SkyArenaArt)
+Members: FarArt (table), CloudX (function), Cloud (function), Island (function), Colors (table), IslandHeight (function), Sky (function), DrawArt (function), CloudArt (table)
+
+local GuildPartyView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuildPartyView)
+Members: CloseInvite (function), Request (function), Render (function), ShowInvite (function), Event (function)
+
+local PixelCrash = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelCrash)
+Members: Pixels (function), SlabArt (table), Play (function), Bites (table), Weights (table), DustArt (table), Crack (function)
+
+local SkyColosseumArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.SkyColosseumArt)
+Members: Order (table), Tiers (table), TierId (function), Scene (function)
+
+local AdminConsoleUI = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminConsoleUI)
+Members: PaintEdges (function), Chip (function), Selectable (function), Pill (function), Page (function), Box (function), FieldTitle (function), Block (function), CharWidth (function), Header (function), Button (function), Make (function), Clip (function), Magnifier (function), Icon (function), Icons (function), Rarity (table), PaintPill (function), PillColors (table), Text (function), On (function), Outline (function), ButtonStyles (table), Spread (function), Colors (table), Z (number), Input (function), Edges (function), TextWidth (function), Tag (function)
+
+local UltraArt_Valhalla = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.UltraArt_Valhalla)
+Members: vh_spear_3 (table), vh_gate_1 (table), vh_valk_2 (table), vh_valk_3 (table), vh_spear_1 (table), vh_valk_1 (table), vh_spear_2 (table), vh_gate_4 (table), vh_cloud_a (table), vh_gate_3 (table), vh_gate_2 (table), vh_cloud_b (table), vh_dive (table)
+
+local AdminChrome = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminChrome)
+Members: Titles (table), Groups (table), Select (function), Layout (function), Build (function)
+
+local BattleScreenWait = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BattleScreenWait)
+Members: While (function)
+
+local PixelLightArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelLightArt)
+Members: Clouds (table), Sky (table), HaloPalette (table), Orb (table), Wisps (table), Halo (table), OrbPalette (table)
+
+local PixelSpearStrike = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelSpearStrike)
+Members: Play (function), Fx (function)
+
+local AdminDashboard = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminDashboard)
+Members: Render (function)
+
+local PixelWorld = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelWorld)
+Members: Hidden (boolean)
+
+local PixelArenaIntro = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelArenaIntro)
+Members: Seconds (number), Play (function), CoinSeconds (number)
+
+local GuildHallArt = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GuildHallArt)
+Members: Draw (function), Mat (function), Colors (table), Cabinet (function)
+
+local PixelExpeditionBeasts = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelExpeditionBeasts)
+Members: Enemy (function), Shapes (table)
+
+local ModPanelModel = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.ModPanelModel)
+Members: Ago (function), IsArmed (function), Comma (function), NewForm (function), DefaultCaps (table), Rarities (table), Timeouts (table), HeroLine (function), Press (function), CONFIRM_MIN (number), Parts (function), LeftText (function), LogLine (function), Push (function), Next (function), Done (function), ClearRestore (function), Trim (function), CONFIRM_SECONDS (number), Problem (function), Fields (table), TimedOut (function), Payload (function), NewQueue (function), Disarm (function), NewConfirm (function), Whole (function)
+
+local AnnouncementBanner = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AnnouncementBanner)
+Members: Receive (function), Advance (function), Destroy (function), Resize (function), __index (table), new (function)
+
+[LocalScript] GlobalAnnouncements
+Path: Players.RubbishZ.PlayerScripts.PlatformBattlesClient.GlobalAnnouncements
+
+local BazaarView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.BazaarView)
+Members: SellPreview (function), BoardItems (function), Data (function), MaxBuy (function), Trades (function), Levels (function), Int (function), Category (function), Quote (function), Icon (function), LimitOf (function), Ask (function), SellHint (function), SellNote (function), Render (function), State (function), TypedCount (function), PriceProblem (function), Update (function), OpenItem (function), Kind (function), Back (function), Enabled (function)
+
+local AdminDiagnosticsView = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.AdminDiagnosticsView)
+Members: Render (function)
+
+local PixelBulletStorm = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelBulletStorm)
+Members: Burst (table), Stats (table), Spark (table), Drone (table), Draw (function), Pip (table), HeavyFlight (number), MaxDivots (number), Muzzle (table), MaxCasings (number), Corner (table), GroundShare (number), Rate (table), Flight (number), Dust (table), New (function)
