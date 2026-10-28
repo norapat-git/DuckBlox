@@ -99,7 +99,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -120, 1, 0)
 Title.Position = UDim2.new(0, 14, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "📡 PlatformBattles Inspector & Spy"
+Title.Text = "📡 PlatformBattles RPG Explorer"
 Title.TextColor3 = Color3.fromRGB(245, 245, 250)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -136,11 +136,25 @@ TabListLayout.FillDirection = Enum.FillDirection.Horizontal
 TabListLayout.Padding = UDim.new(0, 8)
 TabListLayout.Parent = TabBar
 
+local ModulesTabBtn = Instance.new("TextButton")
+ModulesTabBtn.Size = UDim2.new(0, 160, 1, 0)
+ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+ModulesTabBtn.Text = "📜 Battle Modules (0)"
+ModulesTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ModulesTabBtn.Font = Enum.Font.GothamBold
+ModulesTabBtn.TextSize = 12
+ModulesTabBtn.AutoButtonColor = false
+ModulesTabBtn.Parent = TabBar
+
+local ModulesTabCorner = Instance.new("UICorner")
+ModulesTabCorner.CornerRadius = UDim.new(0, 6)
+ModulesTabCorner.Parent = ModulesTabBtn
+
 local LiveTabBtn = Instance.new("TextButton")
-LiveTabBtn.Size = UDim2.new(0, 130, 1, 0)
-LiveTabBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-LiveTabBtn.Text = "🔴 Live Logs (0)"
-LiveTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LiveTabBtn.Size = UDim2.new(0, 150, 1, 0)
+LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+LiveTabBtn.Text = "📥 RPGState Logs (0)"
+LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
 LiveTabBtn.Font = Enum.Font.GothamBold
 LiveTabBtn.TextSize = 12
 LiveTabBtn.AutoButtonColor = false
@@ -150,33 +164,19 @@ local LiveTabCorner = Instance.new("UICorner")
 LiveTabCorner.CornerRadius = UDim.new(0, 6)
 LiveTabCorner.Parent = LiveTabBtn
 
-local ExplorerTabBtn = Instance.new("TextButton")
-ExplorerTabBtn.Size = UDim2.new(0, 150, 1, 0)
-ExplorerTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-ExplorerTabBtn.Text = "📦 Remotes (0)"
-ExplorerTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-ExplorerTabBtn.Font = Enum.Font.GothamBold
-ExplorerTabBtn.TextSize = 12
-ExplorerTabBtn.AutoButtonColor = false
-ExplorerTabBtn.Parent = TabBar
+local RemotesTabBtn = Instance.new("TextButton")
+RemotesTabBtn.Size = UDim2.new(0, 120, 1, 0)
+RemotesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+RemotesTabBtn.Text = "📦 Remotes (13)"
+RemotesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
+RemotesTabBtn.Font = Enum.Font.GothamBold
+RemotesTabBtn.TextSize = 12
+RemotesTabBtn.AutoButtonColor = false
+RemotesTabBtn.Parent = TabBar
 
-local ExplorerTabCorner = Instance.new("UICorner")
-ExplorerTabCorner.CornerRadius = UDim.new(0, 6)
-ExplorerTabCorner.Parent = ExplorerTabBtn
-
-local ModulesTabBtn = Instance.new("TextButton")
-ModulesTabBtn.Size = UDim2.new(0, 150, 1, 0)
-ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-ModulesTabBtn.Text = "📜 Game Modules (0)"
-ModulesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-ModulesTabBtn.Font = Enum.Font.GothamBold
-ModulesTabBtn.TextSize = 12
-ModulesTabBtn.AutoButtonColor = false
-ModulesTabBtn.Parent = TabBar
-
-local ModulesTabCorner = Instance.new("UICorner")
-ModulesTabCorner.CornerRadius = UDim.new(0, 6)
-ModulesTabCorner.Parent = ModulesTabBtn
+local RemotesTabCorner = Instance.new("UICorner")
+RemotesTabCorner.CornerRadius = UDim.new(0, 6)
+RemotesTabCorner.Parent = RemotesTabBtn
 
 local ClearBtn = Instance.new("TextButton")
 ClearBtn.Size = UDim2.new(0, 60, 1, 0)
@@ -196,58 +196,12 @@ local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -20, 0, 20)
 StatusLabel.Position = UDim2.new(0, 10, 0, 84)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Native OnClientEvent Listener Active"
+StatusLabel.Text = "PlatformBattles Connected • Listening to RPGState"
 StatusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Parent = MainFrame
-
-local LiveScroll = Instance.new("ScrollingFrame")
-LiveScroll.Size = UDim2.new(1, -20, 1, -114)
-LiveScroll.Position = UDim2.new(0, 10, 0, 106)
-LiveScroll.BackgroundTransparency = 1
-LiveScroll.BorderSizePixel = 0
-LiveScroll.ScrollBarThickness = 4
-LiveScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
-LiveScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LiveScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LiveScroll.Active = true
-LiveScroll.Visible = true
-LiveScroll.Parent = MainFrame
-
-local LiveList = Instance.new("UIListLayout")
-LiveList.Padding = UDim.new(0, 8)
-LiveList.SortOrder = Enum.SortOrder.LayoutOrder
-LiveList.Parent = LiveScroll
-
-local LivePadding = Instance.new("UIPadding")
-LivePadding.PaddingTop = UDim.new(0, 4)
-LivePadding.PaddingBottom = UDim.new(0, 10)
-LivePadding.Parent = LiveScroll
-
-local ExplorerScroll = Instance.new("ScrollingFrame")
-ExplorerScroll.Size = UDim2.new(1, -20, 1, -114)
-ExplorerScroll.Position = UDim2.new(0, 10, 0, 106)
-ExplorerScroll.BackgroundTransparency = 1
-ExplorerScroll.BorderSizePixel = 0
-ExplorerScroll.ScrollBarThickness = 4
-ExplorerScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
-ExplorerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ExplorerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-ExplorerScroll.Active = true
-ExplorerScroll.Visible = false
-ExplorerScroll.Parent = MainFrame
-
-local ExplorerList = Instance.new("UIListLayout")
-ExplorerList.Padding = UDim.new(0, 6)
-ExplorerList.SortOrder = Enum.SortOrder.LayoutOrder
-ExplorerList.Parent = ExplorerScroll
-
-local ExplorerPadding = Instance.new("UIPadding")
-ExplorerPadding.PaddingTop = UDim.new(0, 4)
-ExplorerPadding.PaddingBottom = UDim.new(0, 10)
-ExplorerPadding.Parent = ExplorerScroll
 
 local ModulesScroll = Instance.new("ScrollingFrame")
 ModulesScroll.Size = UDim2.new(1, -20, 1, -114)
@@ -259,7 +213,7 @@ ModulesScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
 ModulesScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 ModulesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 ModulesScroll.Active = true
-ModulesScroll.Visible = false
+ModulesScroll.Visible = true
 ModulesScroll.Parent = MainFrame
 
 local ModulesList = Instance.new("UIListLayout")
@@ -272,33 +226,79 @@ ModulesPadding.PaddingTop = UDim.new(0, 4)
 ModulesPadding.PaddingBottom = UDim.new(0, 10)
 ModulesPadding.Parent = ModulesScroll
 
+local LiveScroll = Instance.new("ScrollingFrame")
+LiveScroll.Size = UDim2.new(1, -20, 1, -114)
+LiveScroll.Position = UDim2.new(0, 10, 0, 106)
+LiveScroll.BackgroundTransparency = 1
+LiveScroll.BorderSizePixel = 0
+LiveScroll.ScrollBarThickness = 4
+LiveScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
+LiveScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LiveScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+LiveScroll.Active = true
+LiveScroll.Visible = false
+LiveScroll.Parent = MainFrame
+
+local LiveList = Instance.new("UIListLayout")
+LiveList.Padding = UDim.new(0, 8)
+LiveList.SortOrder = Enum.SortOrder.LayoutOrder
+LiveList.Parent = LiveScroll
+
+local LivePadding = Instance.new("UIPadding")
+LivePadding.PaddingTop = UDim.new(0, 4)
+LivePadding.PaddingBottom = UDim.new(0, 10)
+LivePadding.Parent = LiveScroll
+
+local RemotesScroll = Instance.new("ScrollingFrame")
+RemotesScroll.Size = UDim2.new(1, -20, 1, -114)
+RemotesScroll.Position = UDim2.new(0, 10, 0, 106)
+RemotesScroll.BackgroundTransparency = 1
+RemotesScroll.BorderSizePixel = 0
+RemotesScroll.ScrollBarThickness = 4
+RemotesScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 65, 85)
+RemotesScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+RemotesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+RemotesScroll.Active = true
+RemotesScroll.Visible = false
+RemotesScroll.Parent = MainFrame
+
+local RemotesList = Instance.new("UIListLayout")
+RemotesList.Padding = UDim.new(0, 6)
+RemotesList.SortOrder = Enum.SortOrder.LayoutOrder
+RemotesList.Parent = RemotesScroll
+
+local RemotesPadding = Instance.new("UIPadding")
+RemotesPadding.PaddingTop = UDim.new(0, 4)
+RemotesPadding.PaddingBottom = UDim.new(0, 10)
+RemotesPadding.Parent = RemotesScroll
+
 local function selectTab(activeBtn, activeScroll)
-    LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-    LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
-    ExplorerTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
-    ExplorerTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
     ModulesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
     ModulesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
+    LiveTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+    LiveTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
+    RemotesTabBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 52)
+    RemotesTabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
 
-    LiveScroll.Visible = false
-    ExplorerScroll.Visible = false
     ModulesScroll.Visible = false
+    LiveScroll.Visible = false
+    RemotesScroll.Visible = false
 
     activeBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
     activeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     activeScroll.Visible = true
 end
 
+ModulesTabBtn.MouseButton1Click:Connect(function()
+    selectTab(ModulesTabBtn, ModulesScroll)
+end)
+
 LiveTabBtn.MouseButton1Click:Connect(function()
     selectTab(LiveTabBtn, LiveScroll)
 end)
 
-ExplorerTabBtn.MouseButton1Click:Connect(function()
-    selectTab(ExplorerTabBtn, ExplorerScroll)
-end)
-
-ModulesTabBtn.MouseButton1Click:Connect(function()
-    selectTab(ModulesTabBtn, ModulesScroll)
+RemotesTabBtn.MouseButton1Click:Connect(function()
+    selectTab(RemotesTabBtn, RemotesScroll)
 end)
 
 ClearBtn.MouseButton1Click:Connect(function()
@@ -311,7 +311,7 @@ local liveCount = 0
 
 local function addLiveEntry(remoteObj, method, args)
     liveCount = liveCount + 1
-    LiveTabBtn.Text = string.format("🔴 Live Logs (%d)", liveCount)
+    LiveTabBtn.Text = string.format("📥 RPGState Logs (%d)", liveCount)
 
     local path = typeof(remoteObj) == "Instance" and remoteObj:GetFullName() or tostring(remoteObj)
     local name = typeof(remoteObj) == "Instance" and remoteObj.Name or "Unknown"
@@ -353,11 +353,10 @@ local function addLiveEntry(remoteObj, method, args)
     head.BackgroundTransparency = 1
     head.Parent = card
 
-    local tagColor = method:find("Client") and "#3498DB" or "#2ECC71"
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Size = UDim2.new(1, -85, 1, 0)
     titleLbl.BackgroundTransparency = 1
-    titleLbl.Text = string.format("<font color=\"#5865F2\">[%s]</font> <font color=\"%s\">%s</font> • %s", timeStr, tagColor, method, name)
+    titleLbl.Text = string.format("<font color=\"#5865F2\">[%s]</font> <font color=\"#3498DB\">%s</font> • %s", timeStr, method, name)
     titleLbl.RichText = true
     titleLbl.TextColor3 = Color3.fromRGB(245, 245, 250)
     titleLbl.Font = Enum.Font.GothamBold
@@ -407,7 +406,7 @@ local function addLiveEntry(remoteObj, method, args)
     argsBox.Position = UDim2.new(0, 0, 0, 44)
     argsBox.AutomaticSize = Enum.AutomaticSize.Y
     argsBox.BackgroundTransparency = 1
-    argsBox.Text = argsFormatted ~= "" and ("Args: (" .. argsFormatted .. ")") or "(No Arguments)"
+    argsBox.Text = argsFormatted ~= "" and ("Data: (" .. argsFormatted .. ")") or "(No Arguments)"
     argsBox.TextColor3 = Color3.fromRGB(230, 235, 245)
     argsBox.Font = Enum.Font.Code
     argsBox.TextSize = 11.5
@@ -424,18 +423,16 @@ local function populateRemotes()
         end
     end
 
-    local count = 0
     for _, obj in ipairs(targets) do
-        count = count + 1
         local path = obj:GetFullName()
         local name = obj.Name
         local cName = obj.ClassName
 
         local card = Instance.new("Frame")
-        card.Size = UDim2.new(1, 0, 0, 40)
+        card.Size = UDim2.new(1, 0, 0, 42)
         card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
         card.BorderSizePixel = 0
-        card.Parent = ExplorerScroll
+        card.Parent = RemotesScroll
 
         local cardCorner = Instance.new("UICorner")
         cardCorner.CornerRadius = UDim.new(0, 6)
@@ -496,8 +493,6 @@ local function populateRemotes()
             end
         end)
     end
-
-    ExplorerTabBtn.Text = string.format("📦 Remotes (%d)", count)
 end
 
 local function populateModules()
@@ -514,7 +509,7 @@ local function populateModules()
     local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
     if ps then
         for _, obj in ipairs(ps:GetDescendants()) do
-            if obj:IsA("ModuleScript") then
+            if obj:IsA("ModuleScript") and (obj.Name:lower():find("battle") or obj.Name:lower():find("combat") or obj.Name:lower():find("rpg")) then
                 table.insert(modules, obj)
             end
         end
@@ -526,8 +521,19 @@ local function populateModules()
         local path = mod:GetFullName()
         local name = mod.Name
 
+        local memberInfo = {}
+        local success, res = pcall(function() return require(mod) end)
+        if success and typeof(res) == "table" then
+            for k, v in pairs(res) do
+                table.insert(memberInfo, string.format("%s (%s)", tostring(k), typeof(v)))
+            end
+        end
+
+        local membersStr = #memberInfo > 0 and table.concat(memberInfo, ", ") or "Module Loaded"
+
         local card = Instance.new("Frame")
-        card.Size = UDim2.new(1, 0, 0, 40)
+        card.Size = UDim2.new(1, 0, 0, 0)
+        card.AutomaticSize = Enum.AutomaticSize.Y
         card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
         card.BorderSizePixel = 0
         card.Parent = ModulesScroll
@@ -537,13 +543,19 @@ local function populateModules()
         cardCorner.Parent = card
 
         local cardPad = Instance.new("UIPadding")
+        cardPad.PaddingTop = UDim.new(0, 6)
+        cardPad.PaddingBottom = UDim.new(0, 6)
         cardPad.PaddingLeft = UDim.new(0, 10)
         cardPad.PaddingRight = UDim.new(0, 10)
         cardPad.Parent = card
 
+        local header = Instance.new("Frame")
+        header.Size = UDim2.new(1, 0, 0, 22)
+        header.BackgroundTransparency = 1
+        header.Parent = card
+
         local titleLbl = Instance.new("TextLabel")
-        titleLbl.Size = UDim2.new(1, -85, 0, 20)
-        titleLbl.Position = UDim2.new(0, 0, 0, 2)
+        titleLbl.Size = UDim2.new(1, -85, 1, 0)
         titleLbl.BackgroundTransparency = 1
         titleLbl.Text = string.format("<font color=\"#F39C12\">[Module]</font> <b>%s</b>", name)
         titleLbl.RichText = true
@@ -551,10 +563,37 @@ local function populateModules()
         titleLbl.Font = Enum.Font.GothamBold
         titleLbl.TextSize = 12
         titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-        titleLbl.Parent = card
+        titleLbl.Parent = header
+
+        local copyBtn = Instance.new("TextButton")
+        copyBtn.Size = UDim2.new(0, 75, 0, 22)
+        copyBtn.Position = UDim2.new(1, -75, 0, 0)
+        copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+        copyBtn.Text = "📋 Copy"
+        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        copyBtn.Font = Enum.Font.GothamBold
+        copyBtn.TextSize = 11
+        copyBtn.AutoButtonColor = false
+        copyBtn.Parent = header
+
+        local copyCorner = Instance.new("UICorner")
+        copyCorner.CornerRadius = UDim.new(0, 6)
+        copyCorner.Parent = copyBtn
+
+        local fullCopy = string.format("local %s = require(%s)\n-- Members: %s", name, path, membersStr)
+        copyBtn.MouseButton1Click:Connect(function()
+            copyToClipboard(fullCopy)
+            copyBtn.Text = "✅ Copied!"
+            copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+            task.wait(1.5)
+            if copyBtn.Parent then
+                copyBtn.Text = "📋 Copy"
+                copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+            end
+        end)
 
         local pathLbl = Instance.new("TextLabel")
-        pathLbl.Size = UDim2.new(1, -85, 0, 16)
+        pathLbl.Size = UDim2.new(1, 0, 0, 16)
         pathLbl.Position = UDim2.new(0, 0, 0, 22)
         pathLbl.BackgroundTransparency = 1
         pathLbl.Text = path
@@ -564,41 +603,40 @@ local function populateModules()
         pathLbl.TextXAlignment = Enum.TextXAlignment.Left
         pathLbl.Parent = card
 
-        local copyBtn = Instance.new("TextButton")
-        copyBtn.Size = UDim2.new(0, 75, 0, 24)
-        copyBtn.Position = UDim2.new(1, -75, 0.5, -12)
-        copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-        copyBtn.Text = "📋 Copy"
-        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        copyBtn.Font = Enum.Font.GothamBold
-        copyBtn.TextSize = 11
-        copyBtn.AutoButtonColor = false
-        copyBtn.Parent = card
-
-        local copyCorner = Instance.new("UICorner")
-        copyCorner.CornerRadius = UDim.new(0, 6)
-        copyCorner.Parent = copyBtn
-
-        copyBtn.MouseButton1Click:Connect(function()
-            copyToClipboard(path)
-            copyBtn.Text = "✅ Copied!"
-            copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-            task.wait(1.5)
-            if copyBtn.Parent then
-                copyBtn.Text = "📋 Copy"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
-            end
-        end)
+        local memLbl = Instance.new("TextLabel")
+        memLbl.Size = UDim2.new(1, 0, 0, 0)
+        memLbl.Position = UDim2.new(0, 0, 0, 38)
+        memLbl.AutomaticSize = Enum.AutomaticSize.Y
+        memLbl.BackgroundTransparency = 1
+        memLbl.Text = "Functions/Keys: " .. membersStr
+        memLbl.TextColor3 = Color3.fromRGB(180, 220, 255)
+        memLbl.Font = Enum.Font.Code
+        memLbl.TextSize = 11
+        memLbl.TextXAlignment = Enum.TextXAlignment.Left
+        memLbl.TextWrapped = true
+        memLbl.Parent = card
     end
 
-    ModulesTabBtn.Text = string.format("📜 Game Modules (%d)", count)
+    ModulesTabBtn.Text = string.format("📜 Battle Modules (%d)", count)
 end
 
 populateRemotes()
 populateModules()
 
+local rpgState = ReplicatedStorage:FindFirstChild("PlatformBattles") and ReplicatedStorage.PlatformBattles:FindFirstChild("Remotes") and ReplicatedStorage.PlatformBattles.Remotes:FindFirstChild("RPGState")
+if rpgState and rpgState:IsA("RemoteEvent") then
+    pcall(function()
+        rpgState.OnClientEvent:Connect(function(...)
+            local args = {...}
+            task.spawn(function()
+                addLiveEntry(rpgState, "OnClientEvent", args)
+            end)
+        end)
+    end)
+end
+
 for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("RemoteEvent") then
+    if obj:IsA("RemoteEvent") and obj ~= rpgState then
         pcall(function()
             obj.OnClientEvent:Connect(function(...)
                 local args = {...}
@@ -645,22 +683,3 @@ local function enableDragging(frame, handle)
 end
 
 enableDragging(MainFrame, TopBar)
-
-if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "function" then
-    local oldNamecall
-    pcall(function()
-        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if method == "FireServer" or method == "InvokeServer" or method == "Fire" or method == "Invoke" then
-                local isSelf = (self == ScreenGui or (typeof(self) == "Instance" and self:IsDescendantOf(ScreenGui)))
-                if not isSelf then
-                    local args = {...}
-                    task.spawn(function()
-                        addLiveEntry(self, method, args)
-                    end)
-                end
-            end
-            return oldNamecall(self, ...)
-        end)
-    end)
-end
