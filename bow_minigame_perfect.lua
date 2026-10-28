@@ -39,201 +39,46 @@ end
 
 globalEnv.DuckBloxMinigameCleanup = cleanup
 
+local currentShot = 0
+local lastTriggerTime = 0
+local hasResetToBottom = true
+local prevBowCenterY = nil
+
+local lastDodgeTrigger = 0
+local prevNeedleX = nil
+local dodgeHasReset = true
+
+local bowCache = {
+    active = false,
+    goldBand = nil,
+    gaugeFrame = nil,
+    indicator = nil,
+}
+
+local dodgeCache = {
+    active = false,
+    needle = nil,
+    whiteZone = nil,
+}
+
 local activeDefenseClient = nil
 local activeQTE = nil
-local activeWarriorTiming = nil
-local activeThiefTiming = nil
-local activeMageTiming = nil
+
+local function triggerPerfectHit()
+    task.spawn(function()
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.02)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        end)
+    end)
+end
 
 local function initGameFrameworkHooks()
     pcall(function()
         local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
         local pbc = ps and ps:FindFirstChild("PlatformBattlesClient")
         if not pbc then return end
-
-        local qteMod = pbc:FindFirstChild("PixelQTE")
-        if qteMod then
-            local QTE = require(qteMod)
-            if typeof(QTE) == "table" and not QTE._duckbloxHooked then
-                QTE._duckbloxHooked = true
-                local rawNew = QTE.new
-                if typeof(rawNew) == "function" then
-                    QTE.new = function(...)
-                        local inst = rawNew(...)
-                        activeQTE = inst
-                        return inst
-                    end
-                end
-                local rawRun = QTE._run
-                if typeof(rawRun) == "function" then
-                    QTE._run = function(self, ...)
-                        activeQTE = self
-                        local res = rawRun(self, ...)
-                        if CONFIG.Enabled then
-                            task.spawn(function()
-                                while CONFIG.Enabled and isRunning do
-                                    local isQTERunning = false
-                                    pcall(function()
-                                        if typeof(self.IsRunning) == "function" then
-                                            isQTERunning = self:IsRunning()
-                                        end
-                                    end)
-                                    if not isQTERunning then break end
-                                    task.wait(0.08)
-                                    pcall(function()
-                                        if typeof(self._press) == "function" then
-                                            self:_press()
-                                        end
-                                    end)
-                                end
-                            end)
-                        end
-                        return res
-                    end
-                end
-                local rawDefense = QTE._defense
-                if typeof(rawDefense) == "function" then
-                    QTE._defense = function(self, ...)
-                        activeQTE = self
-                        local res = rawDefense(self, ...)
-                        if CONFIG.Enabled then
-                            task.spawn(function()
-                                task.wait(0.08)
-                                pcall(function()
-                                    if typeof(self._press) == "function" then
-                                        self:_press()
-                                    end
-                                end)
-                            end)
-                        end
-                        return res
-                    end
-                end
-                local rawGradeAt = QTE._gradeAt
-                if typeof(rawGradeAt) == "function" then
-                    QTE._gradeAt = function(self, ...)
-                        local origGrade = rawGradeAt(self, ...)
-                        if CONFIG.Enabled then
-                            if typeof(origGrade) == "string" then
-                                return "Perfect"
-                            elseif typeof(origGrade) == "number" then
-                                return 1
-                            elseif typeof(origGrade) == "table" then
-                                if origGrade.Grade then origGrade.Grade = "Perfect" end
-                                if origGrade.grade then origGrade.grade = "Perfect" end
-                                if origGrade.Outcome then origGrade.Outcome = "Perfect" end
-                                return origGrade
-                            end
-                        end
-                        return origGrade
-                    end
-                end
-            end
-        end
-
-        local warriorMod = pbc:FindFirstChild("WarriorBladeTimingClient")
-        if warriorMod then
-            local WB = require(warriorMod)
-            if typeof(WB) == "table" and not WB._duckbloxHooked then
-                WB._duckbloxHooked = true
-                local rawNew = WB.new
-                if typeof(rawNew) == "function" then
-                    WB.new = function(...)
-                        local inst = rawNew(...)
-                        activeWarriorTiming = inst
-                        return inst
-                    end
-                end
-                local rawStart = WB.Start
-                if typeof(rawStart) == "function" then
-                    WB.Start = function(self, ...)
-                        activeWarriorTiming = self
-                        local res = rawStart(self, ...)
-                        if CONFIG.Enabled then
-                            task.spawn(function()
-                                task.wait(0.12)
-                                pcall(function()
-                                    if typeof(self._completeTrace) == "function" then
-                                        self:_completeTrace()
-                                    elseif typeof(self._finish) == "function" then
-                                        self:_finish()
-                                    end
-                                end)
-                            end)
-                        end
-                        return res
-                    end
-                end
-            end
-        end
-
-        local thiefMod = pbc:FindFirstChild("ThiefSlashClient")
-        if thiefMod then
-            local TS = require(thiefMod)
-            if typeof(TS) == "table" and not TS._duckbloxHooked then
-                TS._duckbloxHooked = true
-                local rawNew = TS.new
-                if typeof(rawNew) == "function" then
-                    TS.new = function(...)
-                        local inst = rawNew(...)
-                        activeThiefTiming = inst
-                        return inst
-                    end
-                end
-                local rawStart = TS.Start
-                if typeof(rawStart) == "function" then
-                    TS.Start = function(self, ...)
-                        activeThiefTiming = self
-                        local res = rawStart(self, ...)
-                        if CONFIG.Enabled then
-                            task.spawn(function()
-                                task.wait(0.1)
-                                pcall(function()
-                                    if typeof(self._trySlash) == "function" then
-                                        self:_trySlash()
-                                    end
-                                end)
-                            end)
-                        end
-                        return res
-                    end
-                end
-            end
-        end
-
-        local mageMod = pbc:FindFirstChild("MageRhythmClient")
-        if mageMod then
-            local MR = require(mageMod)
-            if typeof(MR) == "table" and not MR._duckbloxHooked then
-                MR._duckbloxHooked = true
-                local rawNew = MR.new
-                if typeof(rawNew) == "function" then
-                    MR.new = function(...)
-                        local inst = rawNew(...)
-                        activeMageTiming = inst
-                        return inst
-                    end
-                end
-                local rawStart = MR.Start
-                if typeof(rawStart) == "function" then
-                    MR.Start = function(self, ...)
-                        activeMageTiming = self
-                        local res = rawStart(self, ...)
-                        if CONFIG.Enabled then
-                            task.spawn(function()
-                                task.wait(0.15)
-                                pcall(function()
-                                    if typeof(self.Resolve) == "function" then
-                                        self:Resolve()
-                                    end
-                                end)
-                            end)
-                        end
-                        return res
-                    end
-                end
-            end
-        end
 
         local dtcMod = pbc:FindFirstChild("DefenseTimingClient")
         if dtcMod then
@@ -252,18 +97,7 @@ local function initGameFrameworkHooks()
                 if typeof(rawStart) == "function" then
                     DTC.Start = function(self, ...)
                         activeDefenseClient = self
-                        local res = rawStart(self, ...)
-                        if CONFIG.Enabled then
-                            task.spawn(function()
-                                task.wait(0.08)
-                                pcall(function()
-                                    if typeof(self.Press) == "function" then
-                                        self:Press()
-                                    end
-                                end)
-                            end)
-                        end
-                        return res
+                        return rawStart(self, ...)
                     end
                 end
                 local rawResolve = DTC.Resolve
@@ -286,6 +120,118 @@ local function initGameFrameworkHooks()
                 end
             end
         end
+
+        local qteMod = pbc:FindFirstChild("PixelQTE")
+        if qteMod then
+            local QTE = require(qteMod)
+            if typeof(QTE) == "table" and not QTE._duckbloxHooked then
+                QTE._duckbloxHooked = true
+                local rawNew = QTE.new
+                if typeof(rawNew) == "function" then
+                    QTE.new = function(...)
+                        local inst = rawNew(...)
+                        activeQTE = inst
+                        return inst
+                    end
+                end
+                local rawRun = QTE._run
+                if typeof(rawRun) == "function" then
+                    QTE._run = function(self, ...)
+                        activeQTE = self
+                        return rawRun(self, ...)
+                    end
+                end
+                local rawDestroy = QTE.Destroy
+                if typeof(rawDestroy) == "function" then
+                    QTE.Destroy = function(self, ...)
+                        if activeQTE == self then
+                            activeQTE = nil
+                        end
+                        return rawDestroy(self, ...)
+                    end
+                end
+            end
+        end
+
+        local warriorMod = pbc:FindFirstChild("WarriorBladeTimingClient")
+        if warriorMod then
+            local WBT = require(warriorMod)
+            if typeof(WBT) == "table" and not WBT._duckbloxHooked then
+                WBT._duckbloxHooked = true
+                local rawStart = WBT.Start
+                if typeof(rawStart) == "function" then
+                    WBT.Start = function(self, ...)
+                        local ret = rawStart(self, ...)
+                        if CONFIG.Enabled then
+                            task.spawn(function()
+                                task.wait(0.12)
+                                pcall(function()
+                                    if typeof(self._completeTrace) == "function" then
+                                        self:_completeTrace()
+                                    elseif typeof(self._finish) == "function" then
+                                        self:_finish(true)
+                                    end
+                                end)
+                                triggerPerfectHit()
+                            end)
+                        end
+                        return ret
+                    end
+                end
+            end
+        end
+
+        local thiefMod = pbc:FindFirstChild("ThiefSlashClient")
+        if thiefMod then
+            local TSC = require(thiefMod)
+            if typeof(TSC) == "table" and not TSC._duckbloxHooked then
+                TSC._duckbloxHooked = true
+                local rawStart = TSC.Start
+                if typeof(rawStart) == "function" then
+                    TSC.Start = function(self, ...)
+                        local ret = rawStart(self, ...)
+                        if CONFIG.Enabled then
+                            task.spawn(function()
+                                task.wait(0.1)
+                                pcall(function()
+                                    if typeof(self._trySlash) == "function" then
+                                        self:_trySlash()
+                                    end
+                                end)
+                                triggerPerfectHit()
+                            end)
+                        end
+                        return ret
+                    end
+                end
+            end
+        end
+
+        local mageMod = pbc:FindFirstChild("MageRhythmClient")
+        if mageMod then
+            local MRC = require(mageMod)
+            if typeof(MRC) == "table" and not MRC._duckbloxHooked then
+                MRC._duckbloxHooked = true
+                local rawStart = MRC.Start
+                if typeof(rawStart) == "function" then
+                    MRC.Start = function(self, ...)
+                        local ret = rawStart(self, ...)
+                        if CONFIG.Enabled then
+                            task.spawn(function()
+                                task.wait(0.15)
+                                pcall(function()
+                                    if typeof(self.Resolve) == "function" then
+                                        self:Resolve(true)
+                                    end
+                                end)
+                                triggerPerfectHit()
+                            end)
+                        end
+                        return ret
+                    end
+                end
+            end
+        end
     end)
 end
 initGameFrameworkHooks()
@@ -302,6 +248,13 @@ local function notify(title, text)
 end
 
 local function triggerPerfectHit()
+    task.spawn(function()
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.02)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        end)
+    end)
 end
 
 local function isActuallyVisible(obj)
@@ -645,8 +598,6 @@ local function checkDodgeAlignment()
         pcall(function()
             if activeDefenseClient and typeof(activeDefenseClient.Press) == "function" then
                 activeDefenseClient:Press()
-            elseif activeQTE and typeof(activeQTE._press) == "function" then
-                activeQTE:_press()
             end
         end)
         triggerPerfectHit()
@@ -656,6 +607,10 @@ local function checkDodgeAlignment()
     prevNeedleX = needleX
 end
 
+table.insert(activeConnections, RunService.RenderStepped:Connect(function()
+    checkPowerShotAlignment()
+    checkDodgeAlignment()
+end))
 
 table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
