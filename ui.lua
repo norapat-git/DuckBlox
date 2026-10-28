@@ -742,10 +742,8 @@ local function triggerGuiObject(obj)
     if not fired then
         local pos = obj.AbsolutePosition
         local size = obj.AbsoluteSize
-        local screenGui = obj:FindFirstAncestorOfClass("ScreenGui")
-        local insetY = (screenGui and screenGui.IgnoreGuiInset) and 0 or GuiService:GetGuiInset().Y
         local centerX = pos.X + (size.X * 0.5)
-        local centerY = pos.Y + (size.Y * 0.5) + insetY
+        local centerY = pos.Y + (size.Y * 0.5)
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
             task.wait(0.015)
@@ -910,19 +908,47 @@ local function getCenterPanelOptions(combatGui, currentEN)
     return labelOptions
 end
 
+local function selectEnemyTarget(combatGui)
+    if not combatGui then return false end
+    local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1024, 768)
+    local minX = vp.X * 0.68
+    local minY = vp.Y * 0.58
+
+    local targetCandidates = {}
+
+    for _, obj in ipairs(combatGui:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and isActuallyVisible(obj) then
+            local pos = obj.AbsolutePosition
+            local size = obj.AbsoluteSize
+            if pos.X >= minX and pos.Y >= minY and size.X >= 45 and size.Y >= 14 and size.Y <= 70 then
+                local txt = (obj:IsA("TextLabel") or obj:IsA("TextButton")) and cleanMenuText(obj.Text) or ""
+                if txt ~= "PARTY" and txt ~= "FOES" and not txt:find("^FOES") then
+                    table.insert(targetCandidates, obj)
+                end
+            end
+        end
+    end
+
+    if #targetCandidates > 0 then
+        triggerGuiObject(targetCandidates[1])
+        task.wait(0.08)
+    end
+
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+        task.wait(0.02)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+    end)
+
+    return #targetCandidates > 0
+end
+
 local function executeBasicAttack(menuState)
     if not menuState or not menuState.attackBtn then return end
     triggerGuiObject(menuState.attackBtn)
-    task.wait(0.14)
+    task.wait(0.18)
     if bowCache.active or dodgeCache.active then return end
-
-    local centerOpts = getCenterPanelOptions(menuState.gui, menuState.currentEN)
-    if #centerOpts > 0 then
-        triggerGuiObject(centerOpts[1])
-        task.wait(0.1)
-    else
-        triggerGuiObject(menuState.attackBtn)
-    end
+    selectEnemyTarget(menuState.gui)
 end
 
 local combatThread = task.spawn(function()
@@ -932,16 +958,16 @@ local combatThread = task.spawn(function()
             if menuState then
                 if menuState.hasBluePoints and menuState.skillsBtn then
                     triggerGuiObject(menuState.skillsBtn)
-                    task.wait(0.2)
+                    task.wait(0.22)
 
                     if not bowCache.active and not dodgeCache.active then
                         local skillOptions = getCenterPanelOptions(menuState.gui, menuState.currentEN)
                         if #skillOptions > 0 then
                             local chosenSkill = skillOptions[math.random(1, #skillOptions)]
                             triggerGuiObject(chosenSkill)
-                            task.wait(0.12)
-                            if not bowCache.active and not dodgeCache.active and isActuallyVisible(chosenSkill) then
-                                triggerGuiObject(chosenSkill)
+                            task.wait(0.18)
+                            if not bowCache.active and not dodgeCache.active then
+                                selectEnemyTarget(menuState.gui)
                             end
                             task.wait(0.25)
                         end
