@@ -107,15 +107,31 @@ TopBarMask.BorderSizePixel = 0
 TopBarMask.Parent = TopBar
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Size = UDim2.new(1, -165, 1, 0)
 Title.Position = UDim2.new(0, 14, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "🦆 Combat & Timing Finder • PlatformBattles"
+Title.Text = "🦆 Combat & Timing Finder"
 Title.TextColor3 = Color3.fromRGB(245, 245, 250)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TopBar
+
+local CopyAllBtn = Instance.new("TextButton")
+CopyAllBtn.Name = "CopyAllBtn"
+CopyAllBtn.Size = UDim2.new(0, 102, 0, 28)
+CopyAllBtn.Position = UDim2.new(1, -142, 0.5, -14)
+CopyAllBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+CopyAllBtn.Text = "📋 Copy All"
+CopyAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyAllBtn.Font = Enum.Font.GothamBold
+CopyAllBtn.TextSize = 12
+CopyAllBtn.AutoButtonColor = false
+CopyAllBtn.Parent = TopBar
+
+local CopyAllCorner = Instance.new("UICorner")
+CopyAllCorner.CornerRadius = UDim.new(0, 6)
+CopyAllCorner.Parent = CopyAllBtn
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 28, 0, 28)
@@ -233,20 +249,32 @@ local function addCard(modObj)
     local name = modObj.Name
     local path = modObj:GetFullName()
     local nlower = name:lower()
+    local isLocalScript = modObj:IsA("LocalScript")
 
     local isCombatOrTiming = nlower:find("timing") or nlower:find("bow") or nlower:find("minigame")
         or nlower:find("dodge") or nlower:find("combat") or nlower:find("battle")
         or nlower:find("command") or nlower:find("action") or nlower:find("slash")
         or nlower:find("blade") or nlower:find("shot") or nlower:find("rpg")
+        or nlower:find("gauge") or nlower:find("arrow") or nlower:find("meter")
+        or nlower:find("bar") or nlower:find("qte")
 
     local memberInfo = {}
-    local success, res = pcall(function() return require(modObj) end)
-    if success and typeof(res) == "table" then
-        for k, v in pairs(res) do
-            table.insert(memberInfo, string.format("%s (%s)", tostring(k), typeof(v)))
+    local membersStr = ""
+    local fullCopy = ""
+
+    if isLocalScript then
+        membersStr = "LocalScript"
+        fullCopy = string.format("[LocalScript] %s\nPath: %s", name, path)
+    else
+        local success, res = pcall(function() return require(modObj) end)
+        if success and typeof(res) == "table" then
+            for k, v in pairs(res) do
+                table.insert(memberInfo, string.format("%s (%s)", tostring(k), typeof(v)))
+            end
         end
+        membersStr = #memberInfo > 0 and table.concat(memberInfo, ", ") or "Loaded"
+        fullCopy = string.format("local %s = require(%s)\nMembers: %s", name, path, membersStr)
     end
-    local membersStr = #memberInfo > 0 and table.concat(memberInfo, ", ") or "Loaded"
 
     local card = Instance.new("Frame")
     card.Name = name .. " " .. path .. " " .. membersStr
@@ -255,6 +283,7 @@ local function addCard(modObj)
     card.BackgroundColor3 = isCombatOrTiming and Color3.fromRGB(34, 40, 58) or Color3.fromRGB(26, 30, 40)
     card.BorderSizePixel = 0
     card.LayoutOrder = isCombatOrTiming and -100 or 10
+    card:SetAttribute("FullCopy", fullCopy)
     card.Parent = Scroll
 
     local cardCorner = Instance.new("UICorner")
@@ -278,8 +307,8 @@ local function addCard(modObj)
     header.BackgroundTransparency = 1
     header.Parent = card
 
-    local tagText = isCombatOrTiming and "⭐ [KEY MODULE]" or "[Module]"
-    local tagColor = isCombatOrTiming and "#2ECC71" or "#F39C12"
+    local tagText = isLocalScript and "[LocalScript]" or (isCombatOrTiming and "⭐ [KEY MODULE]" or "[Module]")
+    local tagColor = isLocalScript and "#E67E22" or (isCombatOrTiming and "#2ECC71" or "#F39C12")
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Size = UDim2.new(1, -85, 1, 0)
     titleLbl.BackgroundTransparency = 1
@@ -306,7 +335,6 @@ local function addCard(modObj)
     copyCorner.CornerRadius = UDim.new(0, 6)
     copyCorner.Parent = copyBtn
 
-    local fullCopy = string.format("local %s = require(%s)\nMembers: %s", name, path, membersStr)
     copyBtn.MouseButton1Click:Connect(function()
         copyToClipboard(fullCopy)
         copyBtn.Text = "✅ Copied!"
@@ -334,7 +362,7 @@ local function addCard(modObj)
     memLbl.Position = UDim2.new(0, 0, 0, 42)
     memLbl.AutomaticSize = Enum.AutomaticSize.Y
     memLbl.BackgroundTransparency = 1
-    memLbl.Text = "Exports: " .. membersStr
+    memLbl.Text = isLocalScript and "LocalScript" or ("Exports: " .. membersStr)
     memLbl.TextColor3 = Color3.fromRGB(180, 220, 255)
     memLbl.Font = Enum.Font.Code
     memLbl.TextSize = 11
@@ -350,7 +378,7 @@ local function scanAll()
     local pb = ReplicatedStorage:FindFirstChild("PlatformBattles")
     if pb then
         for _, obj in ipairs(pb:GetDescendants()) do
-            if obj:IsA("ModuleScript") then
+            if obj:IsA("ModuleScript") or obj:IsA("LocalScript") then
                 table.insert(modules, obj)
             end
         end
@@ -359,7 +387,7 @@ local function scanAll()
     local ps = LocalPlayer and LocalPlayer:FindFirstChild("PlayerScripts")
     if ps then
         for _, obj in ipairs(ps:GetDescendants()) do
-            if obj:IsA("ModuleScript") then
+            if obj:IsA("ModuleScript") or obj:IsA("LocalScript") then
                 table.insert(modules, obj)
             end
         end
@@ -368,7 +396,7 @@ local function scanAll()
     local pgui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if pgui then
         for _, obj in ipairs(pgui:GetDescendants()) do
-            if obj:IsA("ModuleScript") then
+            if obj:IsA("ModuleScript") or obj:IsA("LocalScript") then
                 table.insert(modules, obj)
             end
         end
@@ -380,6 +408,42 @@ local function scanAll()
 end
 
 scanAll()
+
+CopyAllBtn.MouseButton1Click:Connect(function()
+    local copyTexts = {}
+    for _, card in ipairs(allCards) do
+        if card.Visible then
+            local text = card:GetAttribute("FullCopy")
+            if text then
+                table.insert(copyTexts, text)
+            end
+        end
+    end
+    if #copyTexts == 0 then
+        for _, card in ipairs(allCards) do
+            local text = card:GetAttribute("FullCopy")
+            if text then
+                table.insert(copyTexts, text)
+            end
+        end
+    end
+    local fullDump = table.concat(copyTexts, "\n\n")
+    copyToClipboard(fullDump)
+    CopyAllBtn.Text = string.format("✅ Copied %d!", #copyTexts)
+    CopyAllBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "DuckBlox Copied All",
+            Text = string.format("Copied %d modules to clipboard!", #copyTexts),
+            Duration = 3
+        })
+    end)
+    task.wait(2)
+    if CopyAllBtn.Parent then
+        CopyAllBtn.Text = "📋 Copy All"
+        CopyAllBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    end
+end)
 
 SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
     local q = SearchBox.Text:lower():gsub("%s+", "")

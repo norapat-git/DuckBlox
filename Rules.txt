@@ -38,7 +38,11 @@ local ArcaneTimingVisual = require(Players.RubbishZ.PlayerScripts.PlatformBattle
 local DodgeRules = require(ReplicatedStorage.PlatformBattles.Shared.DodgeRules)
 -- Members: Raw (function), SpeedPerCapPoint (number), FullAnimation (function), MaximumReduction (number), MaximumWithSpeed (number), Roll (function), Cap (function), Chances (function), OverflowReduction (number), MaximumAutomatic (number), PlayerStat (function), OverflowDamageReduction (function)
 
+local PhysicalCameraShot = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PhysicalCameraShot)
+Members: Begin (function), Valid (function), Draw (function), Finish (function)
 
+local PixelQTE = require(Players.RubbishZ.PlayerScripts.PlatformBattlesClient.PixelQTE)
+Members: _open (function), Cancel (function), _thief (function), _feedback (function), _sound (function), _defenseResolved (function), Destroy (function), Handle (function), _pip (function), __index (table), new (function), _clearArea (function), _barrage (function), _send (function), _rescale (function), _defense (function), _close (function), _timedMarks (function), _bar (function), IsRunning (function), _warrior (function), _press (function), _markBar (function), _gradeAt (function), _run (function), _flash (function), _mage (function)
 
 
 
