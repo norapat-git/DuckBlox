@@ -97,8 +97,8 @@ BubbleStroke.Parent = ToggleBubble
 -- 🖥️ Main Window Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 340, 0, 210)
-MainFrame.Position = UDim2.new(0.5, -170, 0.5, -105)
+MainFrame.Size = UDim2.new(0, 340, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -170, 0.5, -130)
 MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -525,31 +525,28 @@ local function scanAndTriggerBow()
         bowHasResetToBottom = true
     end
 
-    -- คำนวณว่ากำลังเคลื่อนที่เลื่อนขึ้นจริงหรือไม่ (ป้องกันการกดตอนลูกศรค้างหรือกำลังรีเซ็ต)
+    -- คำนวณว่ากำลังเคลื่อนที่เลื่อนขึ้นจริงหรือไม่
     local isMovingUp = false
     if prevBowY ~= nil then
         local delta = prevBowY - bowCenterY
-        if delta > 0.2 then
+        if delta > 0.1 then -- ไวขึ้น ป้องกันเฟรมดรอป
             isMovingUp = true
         end
     end
-    prevBowY = bowCenterY
 
-    -- กด Perfect เฉพาะเมื่อ:
-    -- 1. ลูกศรเคยรีเซ็ตลงไปข้างล่างแล้ว (bowHasResetToBottom)
-    -- 2. กำลังเคลื่อนที่ลอยขึ้นจริง (isMovingUp)
-    -- 3. ถึงกึ่งกลางเป้าหมายแถบทองพอดี
-    if bowHasResetToBottom and isMovingUp then
-        local isAtCenter = math.abs(bowCenterY - targetY) <= tol
-        local justPassed = (bowCenterY <= targetY) and (bowCenterY >= targetY - 8)
+    -- ป้องกันปัญหา Lag: ตรวจจับทั้งการอยู่กึ่งกลาง และการที่ข้ามเป้าหมายในเฟรมเดียว
+    local isAtCenter = math.abs(bowCenterY - targetY) <= (tol + 2)
+    local justPassed = (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 35)
+    local crossedDuringLag = (prevBowY ~= nil) and (prevBowY >= targetY - 4) and (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 45)
 
-        if isAtCenter or justPassed then
-            bowHasResetToBottom = false -- ล็อคทันที รอให้รอบถัดไปรีเซ็ตลงล่างก่อน
-            lastBowTrigger = os.clock()
-            triggerBowClick(clickPos.X, clickPos.Y)
-            print(string.format("[Auto Bow] 🎯 POWER SHOT - Perfect Hit (Y: %.1f / Target: %.1f)", bowCenterY, targetY))
-        end
+    if bowHasResetToBottom and isMovingUp and (isAtCenter or justPassed or crossedDuringLag) then
+        bowHasResetToBottom = false -- ล็อคทันที รอให้รอบถัดไปรีเซ็ตลงล่างก่อน
+        lastBowTrigger = os.clock()
+        triggerBowClick(clickPos.X, clickPos.Y)
+        print(string.format("[Auto Bow] 🎯 POWER SHOT - Perfect Hit (Y: %.1f / Target: %.1f)", bowCenterY, targetY))
     end
+
+    prevBowY = bowCenterY
 end
 
 -- สตาร์ท RenderStepped Loop สำหรับ Auto Bow
@@ -566,6 +563,162 @@ local function setAutoBowState(enabled)
             bowConnection = nil
         end
         print("[DuckBlox UI] Auto Bow: OFF")
+    end
+end
+
+-- ========================================================
+-- 🛡️ AUTO DODGE LOGIC (กด Perfect Dodge ตรงแถบสีขาวอัตโนมัติ)
+-- ========================================================
+local autoDodgeEnabled = false
+local lastDodgeTrigger = 0
+local dodgeConnection = nil
+local prevNeedleX = nil
+local dodgeHasReset = true
+
+local DODGE_SETTINGS = {
+    Cooldown = 0.5,
+    Tolerance = 6,
+}
+
+local function isWhiteColor(c)
+    if not c then return false end
+    return (c.R > 0.88) and (c.G > 0.88) and (c.B > 0.88)
+end
+
+local function isRedColor(c)
+    if not c then return false end
+    return (c.R > 0.7) and (c.G < 0.45) and (c.B < 0.45)
+end
+
+local function scanAndTriggerDodge()
+    if not autoDodgeEnabled then return end
+    if (os.clock() - lastDodgeTrigger) < DODGE_SETTINGS.Cooldown then return end
+
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+
+    -- ค้นหา Container มินิเกม Incoming / Dodge
+    local activeContainer = nil
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            for _, label in ipairs(gui:GetDescendants()) do
+                if label:IsA("TextLabel") and label.Visible then
+                    local text = label.Text:upper()
+                    if text:find("INCOMING") or text:find("DODGE") or text:find("HITS YOUR SHIELD") then
+                        activeContainer = label:FindFirstAncestorOfClass("Frame") or label.Parent or gui
+                        break
+                    end
+                end
+            end
+            if activeContainer then break end
+        end
+    end
+
+    if not activeContainer then
+        dodgeHasReset = true
+        prevNeedleX = nil
+        return
+    end
+
+    -- ค้นหา White Zone (แถบสีขาวสำหรับ Dodge)
+    local whiteZone = nil
+    for _, obj in ipairs(activeContainer:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.X > 5 then
+            local name = obj.Name:lower()
+            if name:find("white") or name:find("dodge") or name:find("sweet") or name:find("target") then
+                whiteZone = obj
+                break
+            end
+            if isWhiteColor(obj.BackgroundColor3) then
+                whiteZone = obj
+                break
+            end
+        end
+    end
+
+    -- ค้นหา Red Needle (เข็มสีแดงที่เลื่อนซ้าย/ขวา)
+    local needle = nil
+    for _, obj in ipairs(activeContainer:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Visible and obj.AbsoluteSize.Y > 10 then
+            local name = obj.Name:lower()
+            if name:find("needle") or name:find("line") or name:find("pointer") or name:find("red") or name:find("cursor") then
+                needle = obj
+                break
+            end
+            if isRedColor(obj.BackgroundColor3) or (obj:IsA("ImageLabel") and isRedColor(obj.ImageColor3)) then
+                needle = obj
+                break
+            end
+        end
+    end
+
+    if not whiteZone or not needle then return end
+
+    -- พิกัดแนวนอน (X-Axis) ของ White Zone
+    local whiteLeft = whiteZone.AbsolutePosition.X
+    local whiteRight = whiteLeft + whiteZone.AbsoluteSize.X
+    local whiteCenterX = whiteLeft + (whiteZone.AbsoluteSize.X * 0.5)
+
+    -- พิกัด X ของเข็มสีแดง
+    local needleX = needle.AbsolutePosition.X + (needle.AbsoluteSize.X * 0.5)
+    local tol = DODGE_SETTINGS.Tolerance
+
+    -- ตรวจสอบว่าเข็มอยู่นอกโซนสีขาวหรือไม่ (เพื่อรีเซ็ตเตรียมกดรอบใหม่)
+    if needleX < (whiteLeft - 20) or needleX > (whiteRight + 20) then
+        dodgeHasReset = true
+    end
+
+    -- คำนวณทิศทางการเคลื่อนที่ของเข็ม
+    local movingDir = 0 -- 1 = ขวา, -1 = ซ้าย
+    if prevNeedleX ~= nil then
+        local delta = needleX - prevNeedleX
+        if delta > 0.15 then
+            movingDir = 1 -- เลื่อนจากซ้ายไปขวา
+        elseif delta < -0.15 then
+            movingDir = -1 -- เลื่อนจากขวาไปซ้าย
+        end
+    end
+
+    -- ตรวจจับว่าเข็มเข้าสู่ White Zone หรือข้ามจุดกึ่งกลาง (รองรับแม้เกิด Lag)
+    local inWhiteZone = (needleX >= (whiteLeft - tol)) and (needleX <= (whiteRight + tol))
+    local crossedCenter = false
+    if prevNeedleX ~= nil and movingDir ~= 0 then
+        if movingDir == 1 then
+            -- เลื่อนจากซ้ายไปขวา: ข้าม whiteCenterX
+            if prevNeedleX <= (whiteCenterX + 5) and needleX >= (whiteCenterX - tol) and needleX <= (whiteRight + 25) then
+                crossedCenter = true
+            end
+        elseif movingDir == -1 then
+            -- เลื่อนจากขวาไปซ้าย: ข้าม whiteCenterX
+            if prevNeedleX >= (whiteCenterX - 5) and needleX <= (whiteCenterX + tol) and needleX >= (whiteLeft - 25) then
+                crossedCenter = true
+            end
+        end
+    end
+
+    if dodgeHasReset and (inWhiteZone or crossedCenter) then
+        dodgeHasReset = false
+        lastDodgeTrigger = os.clock()
+        triggerBowClick(whiteCenterX, whiteZone.AbsolutePosition.Y + (whiteZone.AbsoluteSize.Y * 0.5))
+        print(string.format("[Auto Dodge] 🛡️ PERFECT DODGE TRIGGERED! (Needle X: %.1f / WhiteCenter: %.1f)", needleX, whiteCenterX))
+    end
+
+    prevNeedleX = needleX
+end
+
+local function setAutoDodgeState(enabled)
+    autoDodgeEnabled = enabled
+    if enabled then
+        if not dodgeConnection then
+            dodgeConnection = RunService.RenderStepped:Connect(scanAndTriggerDodge)
+        end
+        print("[DuckBlox UI] Auto Dodge: ON")
+    else
+        if dodgeConnection then
+            dodgeConnection:Disconnect()
+            dodgeConnection = nil
+        end
+        print("[DuckBlox UI] Auto Dodge: OFF")
     end
 end
 
@@ -789,6 +942,14 @@ local bowToggle = createToggle(
     end
 )
 
+local dodgeToggle = createToggle(
+    "🛡️ Auto Dodge (White Zone)",
+    false,
+    function(state)
+        setAutoDodgeState(state)
+    end
+)
+
 -- ========================================================
 -- 🖱️ SMOOTH DRAGGING & CONTROLS (ระบบลากและเปิด/ปิดหน้าต่าง)
 -- ========================================================
@@ -838,13 +999,13 @@ local function toggleUI()
     isWindowVisible = not isWindowVisible
     if isWindowVisible then
         MainFrame.Visible = true
-        MainFrame.Size = UDim2.new(0, 310, 0, 190)
+        MainFrame.Size = UDim2.new(0, 310, 0, 235)
         TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 340, 0, 210)
+            Size = UDim2.new(0, 340, 0, 260)
         }):Play()
     else
         local shrinkTween = TweenService:Create(MainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 310, 0, 190)
+            Size = UDim2.new(0, 310, 0, 235)
         })
         shrinkTween:Play()
         shrinkTween.Completed:Wait()

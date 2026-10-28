@@ -246,26 +246,26 @@ local function checkPowerShotAlignment()
     local isMovingUp = false
     if prevBowCenterY ~= nil then
         local delta = prevBowCenterY - bowCenterY
-        if delta > 0.2 then
+        if delta > 0.1 then
             isMovingUp = true
         end
     end
-    prevBowCenterY = bowCenterY
 
-    -- ยิงเฉพาะเมื่อรีเซ็ตลงล่างแล้ว กำลังเลื่อนขึ้น และถึงกึ่งกลางเป้าหมาย
-    if hasResetToBottom and isMovingUp then
-        local isAtCenter = math.abs(bowCenterY - targetY) <= tol
-        local justPassed = (bowCenterY <= targetY) and (bowCenterY >= targetY - 8)
+    -- ป้องกันปัญหา Lag: ดักจับทั้งการอยู่กึ่งกลาง และการที่ข้ามเป้าหมายในเฟรมเดียวตอน FPS ตก
+    local isAtCenter = math.abs(bowCenterY - targetY) <= (tol + 2)
+    local justPassed = (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 35)
+    local crossedDuringLag = (prevBowCenterY ~= nil) and (prevBowCenterY >= targetY - 4) and (bowCenterY <= targetY + tol) and (bowCenterY >= targetY - 45)
 
-        if isAtCenter or justPassed then
-            hasResetToBottom = false -- ล็อคทันทีจนกว่าจะเริ่มรอบใหม่
-            lastTriggerTime = os.clock()
-            currentShot = (currentShot % CONFIG.TotalShots) + 1
+    if hasResetToBottom and isMovingUp and (isAtCenter or justPassed or crossedDuringLag) then
+        hasResetToBottom = false -- ล็อคทันทีจนกว่าจะเริ่มรอบใหม่
+        lastTriggerTime = os.clock()
+        currentShot = (currentShot % CONFIG.TotalShots) + 1
 
-            triggerPerfectHit(clickPos)
-            notify("🎯 PERFECT!", string.format("ยิงที่กึ่งกลางแถบทองรอบที่ %d/%d สำเร็จ (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
-        end
+        triggerPerfectHit(clickPos)
+        notify("🎯 PERFECT!", string.format("ยิงที่กึ่งกลางแถบทองรอบที่ %d/%d สำเร็จ (Y: %.1f / Target: %.1f)", currentShot, CONFIG.TotalShots, bowCenterY, targetY))
     end
+
+    prevBowCenterY = bowCenterY
 end
 
 -- ========================================================
