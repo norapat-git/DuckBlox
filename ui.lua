@@ -58,7 +58,19 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DuckBloxCustomUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 999999 -- อยู่บนสุดเหนือ UI และ Custom Cursor ของเกมเสมอ
 ScreenGui.Parent = parentGui
+
+-- 🖱️ Virtual Hardware Cursor (เคอร์เซอร์สำรอง รับประกันว่าเมาส์จะมองเห็นได้ 100%)
+local VirtualCursor = Instance.new("ImageLabel")
+VirtualCursor.Name = "DuckBloxVirtualCursor"
+VirtualCursor.Size = UDim2.new(0, 24, 0, 24)
+VirtualCursor.BackgroundTransparency = 1
+VirtualCursor.Image = "rbxasset://textures/ArrowCursor.png"
+VirtualCursor.ZIndex = 999999
+VirtualCursor.Active = false -- ป้องกันไม่ให้บังการคลิกปุ่ม
+VirtualCursor.Visible = false
+VirtualCursor.Parent = ScreenGui
 
 -- 🔘 Floating Toggle Button (ปุ่มกลมลอยบนจอสำหรับซ่อน/แสดง)
 local ToggleBubble = Instance.new("TextButton")
@@ -850,11 +862,31 @@ end
 CloseBtn.MouseButton1Click:Connect(toggleUI)
 ToggleBubble.MouseButton1Click:Connect(toggleUI)
 
--- ปุ่มลัดบนคีย์บอร์ด (RightShift หรือ V สำหรับเปิด/ปิด UI)
+-- ปุ่มลัดบนคีย์บอร์ด (RightControl หรือ V สำหรับเปิด/ปิด UI)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.V then
         toggleUI()
+    end
+end)
+
+-- 🖱️ จัดการแสดงผล Cursor ตลอดเวลาที่เปิด UI (แก้ปัญหาเกมซ่อนเมาส์/ล็อคเมาส์)
+RunService.RenderStepped:Connect(function()
+    if isWindowVisible then
+        -- 1. ปลดล็อคเมาส์จากการล็อคกลางจอ (Camera LockCenter)
+        if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        end
+
+        -- 2. สั่งเปิด MouseIcon ของระบบ
+        UserInputService.MouseIconEnabled = true
+
+        -- 3. อัปเดตตำแหน่ง Virtual Cursor สำรองให้ชี้ตรงหัวเมาส์แบบเรียลไทม์
+        local mousePos = UserInputService:GetMouseLocation()
+        VirtualCursor.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+        VirtualCursor.Visible = true
+    else
+        VirtualCursor.Visible = false
     end
 end)
 
