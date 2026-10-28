@@ -97,8 +97,8 @@ BubbleStroke.Parent = ToggleBubble
 -- 🖥️ Main Window Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 440)
-MainFrame.Position = UDim2.new(0.5, -180, 0.5, -220)
+MainFrame.Size = UDim2.new(0, 340, 0, 210)
+MainFrame.Position = UDim2.new(0.5, -170, 0.5, -105)
 MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -271,12 +271,12 @@ local function createButton(text, icon, bgColor, onClick)
     return button
 end
 
--- Toggle Switch Component (สวิตช์แบบเคลื่อนไหวลื่นไหล)
-local function createToggle(title, subtitle, defaultState, onToggle)
+-- Toggle Switch Component (สวิตช์แบบเคลื่อนไหวลื่นไหล คลีนไร้คำอธิบาย)
+local function createToggle(title, defaultState, onToggle)
     local isEnabled = defaultState or false
 
     local card = Instance.new("Frame")
-    card.Size = UDim2.new(1, 0, 0, 56)
+    card.Size = UDim2.new(1, 0, 0, 46)
     card.BackgroundColor3 = THEME.CardBg
     card.BorderSizePixel = 0
     card.Parent = ScrollContainer
@@ -291,8 +291,8 @@ local function createToggle(title, subtitle, defaultState, onToggle)
     cardStroke.Parent = card
 
     local titleLbl = Instance.new("TextLabel")
-    titleLbl.Size = UDim2.new(1, -70, 0, 20)
-    titleLbl.Position = UDim2.new(0, 14, 0, 8)
+    titleLbl.Size = UDim2.new(1, -70, 1, 0)
+    titleLbl.Position = UDim2.new(0, 14, 0, 0)
     titleLbl.BackgroundTransparency = 1
     titleLbl.Text = title
     titleLbl.TextColor3 = THEME.Text
@@ -300,17 +300,6 @@ local function createToggle(title, subtitle, defaultState, onToggle)
     titleLbl.TextSize = 13.5
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
     titleLbl.Parent = card
-
-    local subLbl = Instance.new("TextLabel")
-    subLbl.Size = UDim2.new(1, -70, 0, 18)
-    subLbl.Position = UDim2.new(0, 14, 0, 28)
-    subLbl.BackgroundTransparency = 1
-    subLbl.Text = subtitle or ""
-    subLbl.TextColor3 = THEME.TextMuted
-    subLbl.Font = Enum.Font.Gotham
-    subLbl.TextSize = 11.5
-    subLbl.TextXAlignment = Enum.TextXAlignment.Left
-    subLbl.Parent = card
 
     -- Switch Capsule
     local switch = Instance.new("TextButton")
@@ -782,12 +771,10 @@ end
 -- 🎛️ POPULATE UI CONTENT (สร้างองค์ประกอบในหน้าจอ)
 -- ========================================================
 
--- หมวดที่ 1: Combat & Minigame Automation
-createSection("⚔️ Combat & Minigame Automation")
+createSection("⚔️ Combat & Minigame")
 
 local combatToggle = createToggle(
     "⚔️ Auto Combat (Attack & Skill)",
-    "กด Attack และใช้ Skill อัตโนมัติจนจบการต่อสู้",
     false,
     function(state)
         setAutoCombatState(state)
@@ -796,36 +783,11 @@ local combatToggle = createToggle(
 
 local bowToggle = createToggle(
     "🎯 Auto Bow (Perfect Hit)",
-    "จับจังหวะเข็มชนโซน Perfect แล้วยิงอัตโนมัติ",
     false,
     function(state)
         setAutoBowState(state)
     end
 )
-
--- หมวดที่ 2: Player Stats
-createSection("🏃 Player Movement")
-
-createButton("⚡ WalkSpeed 50", "💨", THEME.CardBg, function()
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.WalkSpeed = 50 end
-end)
-
-createButton("🚀 High Jump (120)", "🦘", THEME.CardBg, function()
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.JumpPower = 120 end
-end)
-
-createButton("🔄 Reset Stats (ปกติ)", "↩️", Color3.fromRGB(38, 42, 54), function()
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = 16
-        hum.JumpPower = 50
-    end
-end)
 
 -- ========================================================
 -- 🖱️ SMOOTH DRAGGING & CONTROLS (ระบบลากและเปิด/ปิดหน้าต่าง)
@@ -876,13 +838,13 @@ local function toggleUI()
     isWindowVisible = not isWindowVisible
     if isWindowVisible then
         MainFrame.Visible = true
-        MainFrame.Size = UDim2.new(0, 340, 0, 420)
+        MainFrame.Size = UDim2.new(0, 310, 0, 190)
         TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 360, 0, 440)
+            Size = UDim2.new(0, 340, 0, 210)
         }):Play()
     else
         local shrinkTween = TweenService:Create(MainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 320, 0, 390)
+            Size = UDim2.new(0, 310, 0, 190)
         })
         shrinkTween:Play()
         shrinkTween.Completed:Wait()
