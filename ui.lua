@@ -1,183 +1,248 @@
 --[[
-    Roblox Modern Clickable UI Script
-    - รองรับทั้งใน Roblox Studio (PlayerGui) และ Executor ทั่วไป (gethui / CoreGui)
-    - สามารถลากหน้าต่างได้ (Draggable)
-    - มีปุ่มเปิด/ปิด (Toggle UI)
-    - มีปุ่มตัวอย่างสำหรับกดใช้งาน (Speed Boost, High Jump, Reset)
-]]
+    ========================================================================
+    🦆 DuckBlox - Ultra Smooth Custom UI (No External Library)
+    ========================================================================
+    - ทำงานเร็ว ลื่น 100% Native Roblox (ไม่มีความหน่วง/Lag จาก Rayfield)
+    - ไม่ต้องโหลดไลบรารีภายนอก (No HttpGet / No loadstring overhead)
+    - มีระบบ Auto Bow (Auto Trigger Perfect ในมินิเกมยิงธนู)
+    - ปรับแต่งหน้าตาให้สวยงาม โมเดิร์น พร้อมแอนิเมชัน TweenService ที่ลื่นไหล
+    - รองรับระบบลากหน้าต่าง (Smooth Drag) และปุ่มเปิด/ปิด (Floating Toggle)
+    ========================================================================
+--]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
 local LocalPlayer = Players.LocalPlayer
 
--- 1. ตรวจสอบที่อยู่ Parent สำหรับวาง ScreenGui (ป้องกัน error กรณีรันในสภาพแวดล้อมต่างๆ)
+-- 1. ตรวจสอบ Parent สำหรับ GUI (รองรับทั้ง Studio และ Executor)
 local parentGui
 if typeof(gethui) == "function" then
     parentGui = gethui()
-elseif game:GetService("RunService"):IsStudio() then
+elseif RunService:IsStudio() then
     parentGui = LocalPlayer:WaitForChild("PlayerGui")
 else
     local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
     parentGui = (success and coreGui) or LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- ลบ UI เก่าทิ้งก่อนถ้ามี เพื่อไม่ให้ซ้อนกัน
-if parentGui:FindFirstChild("ModernCustomUI") then
-    parentGui.ModernCustomUI:Destroy()
+-- ลบ UI ตัวเก่าออกถ้ามีอยู่
+if parentGui:FindFirstChild("DuckBloxCustomUI") then
+    parentGui.DuckBloxCustomUI:Destroy()
 end
 
--- 2. สร้าง ScreenGui หลัก
+-- ========================================================
+-- 🎨 STYLING CONFIG (ชุดสีและรูปแบบสไตล์ Modern Dark)
+-- ========================================================
+local THEME = {
+    Background = Color3.fromRGB(20, 22, 28),
+    TopBar = Color3.fromRGB(27, 30, 39),
+    CardBg = Color3.fromRGB(30, 34, 44),
+    Accent = Color3.fromRGB(88, 101, 242),       -- Discord Blurple
+    Success = Color3.fromRGB(46, 204, 113),     -- Emerald Green
+    Warning = Color3.fromRGB(241, 196, 15),     -- Gold
+    Danger = Color3.fromRGB(231, 76, 60),       -- Red
+    Text = Color3.fromRGB(245, 245, 250),
+    TextMuted = Color3.fromRGB(150, 155, 175),
+    Border = Color3.fromRGB(45, 50, 65),
+}
+
+-- ========================================================
+-- 📦 GUI INSTANCES
+-- ========================================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModernCustomUI"
+ScreenGui.Name = "DuckBloxCustomUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = parentGui
 
--- 3. ปุ่มกลมสำหรับ Toggle เปิด/ปิด UI บนหน้าจอ
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "ToggleBtn"
-ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0.4, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-ToggleBtn.Text = "UI"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 16
-ToggleBtn.Parent = ScreenGui
+-- 🔘 Floating Toggle Button (ปุ่มกลมลอยบนจอสำหรับซ่อน/แสดง)
+local ToggleBubble = Instance.new("TextButton")
+ToggleBubble.Name = "ToggleBubble"
+ToggleBubble.Size = UDim2.new(0, 52, 0, 52)
+ToggleBubble.Position = UDim2.new(0.03, 0, 0.45, 0)
+ToggleBubble.BackgroundColor3 = THEME.TopBar
+ToggleBubble.Text = "🏹"
+ToggleBubble.TextSize = 22
+ToggleBubble.TextColor3 = THEME.Text
+ToggleBubble.AutoButtonColor = false
+ToggleBubble.Parent = ScreenGui
 
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(1, 0)
-ToggleCorner.Parent = ToggleBtn
+local BubbleCorner = Instance.new("UICorner")
+BubbleCorner.CornerRadius = UDim.new(1, 0)
+BubbleCorner.Parent = ToggleBubble
 
-local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Color = Color3.fromRGB(88, 101, 242)
-ToggleStroke.Thickness = 2
-ToggleStroke.Parent = ToggleBtn
+local BubbleStroke = Instance.new("UIStroke")
+BubbleStroke.Color = THEME.Accent
+BubbleStroke.Thickness = 2
+BubbleStroke.Parent = ToggleBubble
 
--- 4. หน้าต่างหลัก (Main Frame)
+-- 🖥️ Main Window Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 320, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -160, 0.5, -180)
-MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+MainFrame.Size = UDim2.new(0, 360, 0, 440)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -220)
+MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.CornerRadius = UDim.new(0, 14)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(45, 45, 55)
+MainStroke.Color = THEME.Border
 MainStroke.Thickness = 1.5
 MainStroke.Parent = MainFrame
 
--- แถบหัวเรื่องด้านบน (TopBar)
+-- TopBar (แถบด้านบนสำหรับลากหน้าต่าง)
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
-TopBar.Size = UDim2.new(1, 0, 0, 42)
-TopBar.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+TopBar.Size = UDim2.new(1, 0, 0, 48)
+TopBar.BackgroundColor3 = THEME.TopBar
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
-TopBarCorner.CornerRadius = UDim.new(0, 12)
+TopBarCorner.CornerRadius = UDim.new(0, 14)
 TopBarCorner.Parent = TopBar
+
+-- Fix TopBar Corner ให้มุมล่างเรียบ
+local TopBarBottomMask = Instance.new("Frame")
+TopBarBottomMask.Size = UDim2.new(1, 0, 0, 10)
+TopBarBottomMask.Position = UDim2.new(0, 0, 1, -10)
+TopBarBottomMask.BackgroundColor3 = THEME.TopBar
+TopBarBottomMask.BorderSizePixel = 0
+TopBarBottomMask.Parent = TopBar
 
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Name = "TitleLabel"
-TitleLabel.Size = UDim2.new(1, -50, 1, 0)
-TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+TitleLabel.Position = UDim2.new(0, 16, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "Custom Menu"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.Text = "🦆 DuckBlox Hub • <font color=\"#5865F2\">Ultra Fast</font>"
+TitleLabel.RichText = true
+TitleLabel.TextColor3 = THEME.Text
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 15
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
--- ปุ่มปิด (X)
+-- ปุ่มปิด (Close Button)
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Name = "CloseBtn"
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -36, 0.5, -15)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(235, 69, 75)
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -38, 0.5, -14)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(38, 42, 54)
 CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextColor3 = THEME.TextMuted
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 13
+CloseBtn.AutoButtonColor = false
 CloseBtn.Parent = TopBar
 
 local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 8)
 CloseCorner.Parent = CloseBtn
 
--- กล่องรวมปุ่มกด (Buttons Container)
-local Container = Instance.new("ScrollingFrame")
-Container.Name = "Container"
-Container.Size = UDim2.new(1, -20, 1, -55)
-Container.Position = UDim2.new(0, 10, 0, 48)
-Container.BackgroundTransparency = 1
-Container.ScrollBarThickness = 4
-Container.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 95)
-Container.CanvasSize = UDim2.new(0, 0, 0, 0)
-Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Container.Parent = MainFrame
+CloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.Danger, TextColor3 = Color3.new(1, 1, 1)}):Play()
+end)
+CloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(38, 42, 54), TextColor3 = THEME.TextMuted}):Play()
+end)
 
-local UIList = Instance.new("UIListLayout")
-UIList.Padding = UDim.new(0, 10)
-UIList.SortOrder = Enum.SortOrder.LayoutOrder
-UIList.Parent = Container
+-- Scroll Container
+local ScrollContainer = Instance.new("ScrollingFrame")
+ScrollContainer.Name = "ScrollContainer"
+ScrollContainer.Size = UDim2.new(1, -20, 1, -60)
+ScrollContainer.Position = UDim2.new(0, 10, 0, 54)
+ScrollContainer.BackgroundTransparency = 1
+ScrollContainer.BorderSizePixel = 0
+ScrollContainer.ScrollBarThickness = 4
+ScrollContainer.ScrollBarImageColor3 = THEME.Border
+ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScrollContainer.Parent = MainFrame
 
-local UIPadding = Instance.new("UIPadding")
-UIPadding.PaddingTop = UDim.new(0, 5)
-UIPadding.PaddingBottom = UDim.new(0, 10)
-UIPadding.PaddingLeft = UDim.new(0, 5)
-UIPadding.PaddingRight = UDim.new(0, 5)
-UIPadding.Parent = Container
+local ContentList = Instance.new("UIListLayout")
+ContentList.Padding = UDim.new(0, 10)
+ContentList.SortOrder = Enum.SortOrder.LayoutOrder
+ContentList.Parent = ScrollContainer
 
--- 5. ฟังก์ชันสำหรับสร้างปุ่มกด (Create Button Helper)
-local function createButton(text, color, onClick)
+local ContentPadding = Instance.new("UIPadding")
+ContentPadding.PaddingTop = UDim.new(0, 4)
+ContentPadding.PaddingBottom = UDim.new(0, 12)
+ContentPadding.PaddingLeft = UDim.new(0, 4)
+ContentPadding.PaddingRight = UDim.new(0, 4)
+ContentPadding.Parent = ScrollContainer
+
+-- ========================================================
+-- 🧩 UI BUILDER HELPERS (ฟังก์ชันช่วยสร้าง Element)
+-- ========================================================
+
+-- Section Title
+local function createSection(titleText)
+    local section = Instance.new("TextLabel")
+    section.Size = UDim2.new(1, 0, 0, 24)
+    section.BackgroundTransparency = 1
+    section.Text = string.upper(titleText)
+    section.TextColor3 = THEME.TextMuted
+    section.Font = Enum.Font.GothamBold
+    section.TextSize = 11
+    section.TextXAlignment = Enum.TextXAlignment.Left
+    section.Parent = ScrollContainer
+    return section
+end
+
+-- Interactive Button
+local function createButton(text, icon, bgColor, onClick)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 0, 42)
-    button.BackgroundColor3 = color or Color3.fromRGB(40, 42, 54)
-    button.Text = text
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.BackgroundColor3 = bgColor or THEME.CardBg
+    button.Text = (icon and icon .. "  " or "") .. text
+    button.TextColor3 = THEME.Text
     button.Font = Enum.Font.GothamSemibold
-    button.TextSize = 14
+    button.TextSize = 13.5
     button.AutoButtonColor = false
-    button.Parent = Container
+    button.Parent = ScrollContainer
 
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = button
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = button
 
-    local btnStroke = Instance.new("UIStroke")
-    btnStroke.Color = Color3.fromRGB(60, 63, 78)
-    btnStroke.Thickness = 1
-    btnStroke.Parent = button
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = THEME.Border
+    stroke.Thickness = 1
+    stroke.Parent = button
 
-    -- เอฟเฟกต์แอนิเมชันเวลาเอาเมาส์ชี้และกด (Hover & Click Tween)
-    local originalColor = button.BackgroundColor3
-    local hoverColor = Color3.fromRGB(
-        math.min(255, originalColor.R * 255 + 20),
-        math.min(255, originalColor.G * 255 + 20),
-        math.min(255, originalColor.B * 255 + 20)
+    -- Smooth Hover & Click Tween
+    local originalBg = button.BackgroundColor3
+    local hoverBg = Color3.fromRGB(
+        math.min(255, originalBg.R * 255 + 22),
+        math.min(255, originalBg.G * 255 + 22),
+        math.min(255, originalBg.B * 255 + 22)
     )
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
+        TweenService:Create(button, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = hoverBg
+        }):Play()
     end)
 
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
+        TweenService:Create(button, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = originalBg
+        }):Play()
     end)
 
     button.MouseButton1Click:Connect(function()
-        -- แอนิเมชันตอนกดปุ่ม
-        local pressTween = TweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(0.97, 0, 0, 39)})
+        local pressTween = TweenService:Create(button, TweenInfo.new(0.08), {Size = UDim2.new(0.98, 0, 0, 40)})
         pressTween:Play()
         pressTween.Completed:Wait()
         TweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 42)}):Play()
@@ -190,8 +255,485 @@ local function createButton(text, color, onClick)
     return button
 end
 
--- 6. ระบบลากหน้าต่าง (Smooth Dragging)
-local function makeDraggable(frame, dragHandle)
+-- Toggle Switch Component (สวิตช์แบบเคลื่อนไหวลื่นไหล)
+local function createToggle(title, subtitle, defaultState, onToggle)
+    local isEnabled = defaultState or false
+
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(1, 0, 0, 56)
+    card.BackgroundColor3 = THEME.CardBg
+    card.BorderSizePixel = 0
+    card.Parent = ScrollContainer
+
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 10)
+    cardCorner.Parent = card
+
+    local cardStroke = Instance.new("UIStroke")
+    cardStroke.Color = THEME.Border
+    cardStroke.Thickness = 1
+    cardStroke.Parent = card
+
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1, -70, 0, 20)
+    titleLbl.Position = UDim2.new(0, 14, 0, 8)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = title
+    titleLbl.TextColor3 = THEME.Text
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextSize = 13.5
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.Parent = card
+
+    local subLbl = Instance.new("TextLabel")
+    subLbl.Size = UDim2.new(1, -70, 0, 18)
+    subLbl.Position = UDim2.new(0, 14, 0, 28)
+    subLbl.BackgroundTransparency = 1
+    subLbl.Text = subtitle or ""
+    subLbl.TextColor3 = THEME.TextMuted
+    subLbl.Font = Enum.Font.Gotham
+    subLbl.TextSize = 11.5
+    subLbl.TextXAlignment = Enum.TextXAlignment.Left
+    subLbl.Parent = card
+
+    -- Switch Capsule
+    local switch = Instance.new("TextButton")
+    switch.Size = UDim2.new(0, 46, 0, 26)
+    switch.Position = UDim2.new(1, -58, 0.5, -13)
+    switch.BackgroundColor3 = isEnabled and THEME.Success or Color3.fromRGB(45, 50, 65)
+    switch.Text = ""
+    switch.AutoButtonColor = false
+    switch.Parent = card
+
+    local switchCorner = Instance.new("UICorner")
+    switchCorner.CornerRadius = UDim.new(1, 0)
+    switchCorner.Parent = switch
+
+    local circle = Instance.new("Frame")
+    circle.Size = UDim2.new(0, 20, 0, 20)
+    circle.Position = isEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    circle.BorderSizePixel = 0
+    circle.Parent = switch
+
+    local circleCorner = Instance.new("UICorner")
+    circleCorner.CornerRadius = UDim.new(1, 0)
+    circleCorner.Parent = circle
+
+    local function updateSwitch(state, animate)
+        isEnabled = state
+        local targetPos = isEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+        local targetBg = isEnabled and THEME.Success or Color3.fromRGB(45, 50, 65)
+        local targetStroke = isEnabled and THEME.Success or THEME.Border
+
+        if animate then
+            TweenService:Create(circle, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = targetPos}):Play()
+            TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = targetBg}):Play()
+            TweenService:Create(cardStroke, TweenInfo.new(0.2), {Color = targetStroke}):Play()
+        else
+            circle.Position = targetPos
+            switch.BackgroundColor3 = targetBg
+            cardStroke.Color = targetStroke
+        end
+
+        if onToggle then
+            onToggle(isEnabled)
+        end
+    end
+
+    switch.MouseButton1Click:Connect(function()
+        updateSwitch(not isEnabled, true)
+    end)
+
+    return {
+        Set = function(val) updateSwitch(val, true) end,
+        Get = function() return isEnabled end
+    }
+end
+
+-- ========================================================
+-- 🏹 AUTO BOW LOGIC (ระบบตรวจจับและยิง Perfect อัตโนมัติ)
+-- ========================================================
+local autoBowEnabled = false
+local lastBowTrigger = 0
+local bowConnection = nil
+
+local BOW_SETTINGS = {
+    Cooldown = 0.45,
+    Tolerance = 5,
+    GuiNames = {"BowMinigame", "BowGui", "Minigame", "QTE", "TimingBar", "AimMinigame", "ArrowMinigame"},
+    TargetNames = {"Perfect", "PerfectZone", "SweetSpot", "GreenZone", "TargetZone", "Target", "Goal"},
+    IndicatorNames = {"Pointer", "Needle", "Indicator", "Cursor", "Bar", "Line", "Slider"},
+}
+
+local function triggerBowClick(x, y)
+    -- 1. Virtual Mouse Click
+    pcall(function()
+        local clickX = x or (workspace.CurrentCamera.ViewportSize.X / 2)
+        local clickY = y or (workspace.CurrentCamera.ViewportSize.Y / 2)
+        VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 0)
+        task.wait(0.015)
+        VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
+    end)
+
+    -- 2. Spacebar Keypress
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+        task.wait(0.015)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+    end)
+
+    -- 3. Tool Activate (ถ้าถือคันธนูอยู่)
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool then tool:Activate() end
+        end
+    end)
+end
+
+local function scanAndTriggerBow()
+    if not autoBowEnabled then return end
+    if (os.clock() - lastBowTrigger) < BOW_SETTINGS.Cooldown then return end
+
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+
+    -- ค้นหา Minigame GUI
+    local activeGui = nil
+    for _, name in ipairs(BOW_SETTINGS.GuiNames) do
+        local g = playerGui:FindFirstChild(name)
+        if g and g:IsA("ScreenGui") and g.Enabled then
+            activeGui = g
+            break
+        end
+    end
+
+    if not activeGui then
+        for _, g in ipairs(playerGui:GetChildren()) do
+            if g:IsA("ScreenGui") and g.Enabled then
+                local lname = g.Name:lower()
+                if lname:find("bow") or lname:find("minigame") or lname:find("qte") or lname:find("timing") then
+                    activeGui = g
+                    break
+                end
+            end
+        end
+    end
+
+    if not activeGui then return end
+
+    -- ค้นหา Target Zone และ Indicator
+    local targetZone = nil
+    for _, name in ipairs(BOW_SETTINGS.TargetNames) do
+        local f = activeGui:FindFirstChild(name, true)
+        if f and f:IsA("GuiObject") and f.Visible then
+            targetZone = f
+            break
+        end
+    end
+
+    local indicator = nil
+    for _, name in ipairs(BOW_SETTINGS.IndicatorNames) do
+        local f = activeGui:FindFirstChild(name, true)
+        if f and f:IsA("GuiObject") and f.Visible then
+            indicator = f
+            break
+        end
+    end
+
+    if not targetZone or not indicator then return end
+
+    local tPos = targetZone.AbsolutePosition
+    local tSize = targetZone.AbsoluteSize
+    local iPos = indicator.AbsolutePosition
+    local iSize = indicator.AbsoluteSize
+
+    local indCenterX = iPos.X + (iSize.X / 2)
+    local indCenterY = iPos.Y + (iSize.Y / 2)
+
+    local tol = BOW_SETTINGS.Tolerance
+    local minX = tPos.X - tol
+    local maxX = tPos.X + tSize.X + tol
+    local minY = tPos.Y - tol
+    local maxY = tPos.Y + tSize.Y + tol
+
+    -- เช็คการเข้าสู่ Perfect Zone
+    if (indCenterX >= minX and indCenterX <= maxX) and (indCenterY >= minY and indCenterY <= maxY) then
+        lastBowTrigger = os.clock()
+        triggerBowClick(indCenterX, indCenterY)
+    end
+end
+
+-- สตาร์ท RenderStepped Loop สำหรับ Auto Bow
+local function setAutoBowState(enabled)
+    autoBowEnabled = enabled
+    if enabled then
+        if not bowConnection then
+            bowConnection = RunService.RenderStepped:Connect(scanAndTriggerBow)
+        end
+        print("[DuckBlox UI] Auto Bow: ON (ตรวจจับระดับ Frame-Perfect)")
+    else
+        if bowConnection then
+            bowConnection:Disconnect()
+            bowConnection = nil
+        end
+        print("[DuckBlox UI] Auto Bow: OFF")
+    end
+end
+
+-- ========================================================
+-- ⚔️ AUTO COMBAT SYSTEM (ระบบต่อสู้อัตโนมัติ: โจมตี & ใช้สกิลจนจบ Combat)
+-- ========================================================
+local autoCombatEnabled = false
+local autoCombatThread = nil
+
+local COMBAT_CONFIG = {
+    ActionDelay = 0.45,            -- หน่วงเวลาระหว่างรอบการกดแอ็กชัน (วินาที)
+    PrioritizeSkills = true,       -- ลำดับความสำคัญ: ใช้ Skill ก่อน ถ้าติด CD ค่อยใช้ Attack
+    
+    -- คำค้นหา GUI การต่อสู้ (Combat GUI)
+    CombatGuiKeywords = {"Combat", "Battle", "Fight", "Turn", "Match", "Action", "Dungeon", "Duel"},
+    
+    -- รายชื่อปุ่มโจมตีปกติ (Attack Buttons)
+    AttackNames = {
+        "Attack", "AttackBtn", "BasicAttack", "NormalAttack", "Strike", 
+        "Hit", "Slash", "Punch", "Shoot", "Fire", "ActionButton", "Primary"
+    },
+    
+    -- รายชื่อปุ่มสกิล (Skill Buttons)
+    SkillNames = {
+        "Skill", "Skill1", "Skill2", "Skill3", "Skill4", "SkillBtn", 
+        "Ability", "Ability1", "Ability2", "Ability3", 
+        "Spell", "Magic", "Special", "Burst", "Ultimate"
+    },
+    
+    -- คำค้นหาปุ่มยืนยันเป้าหมายหรือเลือกศัตรู
+    TargetNames = {"Target", "Select", "Confirm", "Enemy", "Opponent", "LockOn"},
+}
+
+-- จำลองการคลิกที่ปุ่ม GuiObject บนหน้าจอ
+local function clickGuiButton(button)
+    if not button or not button:IsA("GuiObject") then return false end
+    
+    local pos = button.AbsolutePosition
+    local size = button.AbsoluteSize
+    local centerX = pos.X + (size.X / 2)
+    local centerY = pos.Y + (size.Y / 2)
+    
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
+        task.wait(0.015)
+        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
+    end)
+    return true
+end
+
+-- ตรวจสอบว่าสกิลพร้อมใช้งานหรือไม่ (ไม่ติดคูลดาวน์)
+local function isSkillReady(button)
+    if not button.Visible then return false end
+    
+    -- ตรวจสอบตัวหนังสือบนปุ่ม (กรณีระบุเวลา Cooldown เป็นวินาที เช่น "4.5", "2s")
+    if button:IsA("TextButton") then
+        local txt = button.Text:gsub("%s+", "")
+        if tonumber(txt) or txt:match("^%d+%.?%d*s?$") then
+            return false
+        end
+    end
+    
+    -- ตรวจสอบเลเยอร์ Cooldown Overlay หรือ Progress Bar
+    for _, child in ipairs(button:GetDescendants()) do
+        if child:IsA("GuiObject") and child.Visible then
+            local cname = child.Name:lower()
+            if (cname:find("cooldown") or cname:find("cd") or cname:find("mask")) and child.BackgroundTransparency < 0.9 then
+                return false
+            end
+            if child:IsA("TextLabel") and child.Visible then
+                local ltxt = child.Text:gsub("%s+", "")
+                if tonumber(ltxt) or ltxt:match("^%d+%.?%d*s?$") then
+                    return false
+                end
+            end
+        end
+    end
+    
+    return true
+end
+
+-- ค้นหาหน้าจอการต่อสู้ (Combat GUI) ที่กำลังเปิดอยู่
+local function getActiveCombatGui()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil end
+    
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            local lname = gui.Name:lower()
+            for _, kw in ipairs(COMBAT_CONFIG.CombatGuiKeywords) do
+                if lname:find(kw:lower()) then
+                    return gui
+                end
+            end
+        end
+    end
+    
+    -- หากไม่พบตามชื่อ GUI ให้สแกนหา GUI ใดๆ ที่มีปุ่ม Attack ปรากฏบนจอ
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            for _, attName in ipairs(COMBAT_CONFIG.AttackNames) do
+                local found = gui:FindFirstChild(attName, true)
+                if found and found:IsA("GuiObject") and found.Visible then
+                    return gui
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- ฟังก์ชันหลัก auto combat: เลือก Attack หรือ Skill จนจบ Combat
+local function autoCombat()
+    print("⚔️ [DuckBlox UI] เริ่มต้นทำงาน auto combat...")
+    
+    while autoCombatEnabled do
+        local combatGui = getActiveCombatGui()
+        
+        if combatGui then
+            local actionDone = false
+            
+            -- ขั้นที่ 1: ตรวจหา Skill และกดใช้งานถ้าพร้อม (ไม่ติด CD)
+            if COMBAT_CONFIG.PrioritizeSkills then
+                for _, sName in ipairs(COMBAT_CONFIG.SkillNames) do
+                    local skillBtn = combatGui:FindFirstChild(sName, true)
+                    if skillBtn and skillBtn:IsA("GuiObject") and isSkillReady(skillBtn) then
+                        clickGuiButton(skillBtn)
+                        actionDone = true
+                        print(("[Auto Combat] ⚡ ใช้สกิล: %s"):format(skillBtn.Name))
+                        task.wait(0.2)
+                        break
+                    end
+                end
+            end
+            
+            -- ขั้นที่ 2: ถ้าไม่มีสกิลพร้อม ให้เลือกกด Attack ปกติ
+            if not actionDone then
+                for _, aName in ipairs(COMBAT_CONFIG.AttackNames) do
+                    local atkBtn = combatGui:FindFirstChild(aName, true)
+                    if atkBtn and atkBtn:IsA("GuiObject") and atkBtn.Visible then
+                        clickGuiButton(atkBtn)
+                        actionDone = true
+                        print(("[Auto Combat] 🗡️ โจมตีปกติ (Attack): %s"):format(atkBtn.Name))
+                        break
+                    end
+                end
+            end
+            
+            -- ขั้นที่ 3: ยืนยันเป้าหมายอัตโนมัติ (Target / Confirm) ถ้ามีหน้าต่างขึ้นมา
+            task.wait(0.12)
+            for _, tName in ipairs(COMBAT_CONFIG.TargetNames) do
+                local targetBtn = combatGui:FindFirstChild(tName, true)
+                if targetBtn and targetBtn:IsA("GuiObject") and targetBtn.Visible then
+                    clickGuiButton(targetBtn)
+                    print("[Auto Combat] 🎯 เลือกเป้าหมายอัตโนมัติ")
+                    break
+                end
+            end
+            
+            -- ขั้นที่ 4: กรณี Action RPG ทั่วไปที่ใช้ Tool หรือปุ่ม Space/LMB
+            if not actionDone then
+                local char = LocalPlayer.Character
+                local tool = char and char:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate()
+                end
+            end
+            
+            task.wait(COMBAT_CONFIG.ActionDelay)
+        else
+            -- อยู่นอกสถานะต่อสู้ รอจนกว่าจะเริ่ม Combat รอบใหม่
+            task.wait(0.5)
+        end
+    end
+end
+
+-- ฟังก์ชันสำหรับเปิด/ปิด auto combat
+local function setAutoCombatState(enabled)
+    autoCombatEnabled = enabled
+    if enabled then
+        -- เปิดระบบ Auto Bow อัตโนมัติเพื่อรองรับกรณีมี QTE Timing ระหว่างต่อสู้
+        if not autoBowEnabled then
+            setAutoBowState(true)
+            if bowToggle and bowToggle.Set then
+                bowToggle.Set(true)
+            end
+        end
+        
+        autoCombatThread = task.spawn(autoCombat)
+        print("⚔️ [DuckBlox UI] Auto Combat: ON")
+    else
+        autoCombatEnabled = false
+        if autoCombatThread then
+            task.cancel(autoCombatThread)
+            autoCombatThread = nil
+        end
+        print("⚔️ [DuckBlox UI] Auto Combat: OFF")
+    end
+end
+
+-- ========================================================
+-- 🎛️ POPULATE UI CONTENT (สร้างองค์ประกอบในหน้าจอ)
+-- ========================================================
+
+-- หมวดที่ 1: Combat & Minigame Automation
+createSection("⚔️ Combat & Minigame Automation")
+
+local combatToggle = createToggle(
+    "⚔️ Auto Combat (Attack & Skill)",
+    "กด Attack และใช้ Skill อัตโนมัติจนจบการต่อสู้",
+    false,
+    function(state)
+        setAutoCombatState(state)
+    end
+)
+
+local bowToggle = createToggle(
+    "🎯 Auto Bow (Perfect Hit)",
+    "จับจังหวะเข็มชนโซน Perfect แล้วยิงอัตโนมัติ",
+    false,
+    function(state)
+        setAutoBowState(state)
+    end
+)
+
+-- หมวดที่ 2: Player Stats
+createSection("🏃 Player Movement")
+
+createButton("⚡ WalkSpeed 50", "💨", THEME.CardBg, function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = 50 end
+end)
+
+createButton("🚀 High Jump (120)", "🦘", THEME.CardBg, function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.JumpPower = 120 end
+end)
+
+createButton("🔄 Reset Stats (ปกติ)", "↩️", Color3.fromRGB(38, 42, 54), function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = 16
+        hum.JumpPower = 50
+    end
+end)
+
+-- ========================================================
+-- 🖱️ SMOOTH DRAGGING & CONTROLS (ระบบลากและเปิด/ปิดหน้าต่าง)
+-- ========================================================
+local function enableSmoothDrag(frame, dragHandle)
     local dragging = false
     local dragInput, dragStart, startPos
 
@@ -218,139 +760,50 @@ local function makeDraggable(frame, dragHandle)
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            TweenService:Create(frame, TweenInfo.new(0.08), {
-                Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            TweenService:Create(frame, TweenInfo.new(0.06, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
             }):Play()
         end
     end)
 end
 
-makeDraggable(MainFrame, TopBar)
-makeDraggable(ToggleBtn, ToggleBtn)
+enableSmoothDrag(MainFrame, TopBar)
+enableSmoothDrag(ToggleBubble, ToggleBubble)
 
--- 7. ระบบซ่อน/แสดงหน้าต่าง
-local isOpen = true
-local function setUIVisible(visible)
-    isOpen = visible
-    MainFrame.Visible = visible
-end
-
-CloseBtn.MouseButton1Click:Connect(function()
-    setUIVisible(false)
-end)
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    setUIVisible(not isOpen)
-end)
-
--- 8. ฟังก์ชันช่วยค้นหาตัวละคร
-local function getHumanoid()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    return char:FindFirstChildOfClass("Humanoid")
-end
-
--- ==========================================
--- 9. เพิ่มปุ่มคำสั่งต่างๆ ตรงนี้ (Custom Buttons)
--- ==========================================
-
-createButton("⚡ Speed Boost (50)", Color3.fromRGB(88, 101, 242), function()
-    local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = 50
-        print("[UI] WalkSpeed ตั้งเป็น 50 แล้ว")
-    end
-end)
-
-createButton("🚀 High Jump (120)", Color3.fromRGB(59, 165, 93), function()
-    local hum = getHumanoid()
-    if hum then
-        hum.JumpPower = 120
-        print("[UI] JumpPower ตั้งเป็น 120 แล้ว")
-    end
-end)
-
-createButton("🔄 Reset Stats (ปกติ)", Color3.fromRGB(240, 71, 71), function()
-    local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = 16
-        hum.JumpPower = 50
-        print("[UI] รีเซ็ตความเร็วและแรงกระโดดกลับสู่ปกติ")
-    end
-end)
-
-local isAutoMinigame = false
-local autoButton = nil
-autoButton = createButton("🤖 Auto Minigame: OFF", Color3.fromRGB(100, 100, 115), function()
-    isAutoMinigame = not isAutoMinigame
-    if isAutoMinigame then
-        autoButton.Text = "🤖 Auto Minigame: ON (ทำงานอยู่)"
-        autoButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-        print("[UI] เปิดระบบ Auto Minigame แล้ว")
-
-        task.spawn(function()
-            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            while isAutoMinigame do
-                local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
-                    or ReplicatedStorage:WaitForChild("MinigameAction", 3)
-
-                if not actionRemote then
-                    task.wait(2)
-                else
-                    for shot = 1, 4 do
-                        if not isAutoMinigame then break end
-                        task.wait(0.75)
-                        if actionRemote and actionRemote:IsA("RemoteEvent") then
-                            actionRemote:FireServer(shot, 0.75)
-                        end
-                        print(("[UI] [Auto] ยิงครั้งที่ %d/4"):format(shot))
-                    end
-
-                    if not isAutoMinigame then break end
-                    task.wait(2) -- รอเริ่มรอบถัดไป
-                end
-            end
-        end)
+-- Toggle UI Visibility with Smooth Scale/Fade Animation
+local isWindowVisible = true
+local function toggleUI()
+    isWindowVisible = not isWindowVisible
+    if isWindowVisible then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 340, 0, 420)
+        TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 360, 0, 440)
+        }):Play()
     else
-        autoButton.Text = "🤖 Auto Minigame: OFF"
-        autoButton.BackgroundColor3 = Color3.fromRGB(100, 100, 115)
-        print("[UI] ปิดระบบ Auto Minigame แล้ว")
-    end
-end)
-
-local isMinigameRunning = false
-createButton("🎯 Trigger Minigame (1 รอบ 4x 0.75s)", Color3.fromRGB(155, 89, 182), function()
-    if isMinigameRunning or isAutoMinigame then
-        print("[UI] กำลังทำงานอยู่...")
-        return
-    end
-
-    isMinigameRunning = true
-    task.spawn(function()
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local actionRemote = ReplicatedStorage:FindFirstChild("MinigameAction") 
-            or ReplicatedStorage:WaitForChild("MinigameAction", 3)
-
-        print("[UI] เริ่มต้นส่งคำสั่งมินิเกม 4 จังหวะ...")
-
-        for shot = 1, 4 do
-            task.wait(0.75)
-            if actionRemote and actionRemote:IsA("RemoteEvent") then
-                actionRemote:FireServer(shot, 0.75)
-            end
-            print(("[UI] ยิงครั้งที่ %d/4 สำเร็จ"):format(shot))
+        local shrinkTween = TweenService:Create(MainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 320, 0, 390)
+        })
+        shrinkTween:Play()
+        shrinkTween.Completed:Wait()
+        if not isWindowVisible then
+            MainFrame.Visible = false
         end
+    end
+end
 
-        print("[UI] ยิงครบ 4 ครั้งเรียบร้อยแล้ว")
-        isMinigameRunning = false
-    end)
+CloseBtn.MouseButton1Click:Connect(toggleUI)
+ToggleBubble.MouseButton1Click:Connect(toggleUI)
+
+-- ปุ่มลัดบนคีย์บอร์ด (RightShift หรือ V สำหรับเปิด/ปิด UI)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.V then
+        toggleUI()
+    end
 end)
 
-createButton("🔔 Send Notification", Color3.fromRGB(250, 166, 26), function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Hello!",
-        Text = "ปุ่มทำงานเรียบร้อยแล้ว",
-        Duration = 3
-    })
-end)
-
-print("[UI] โหลดเมนูเรียบร้อยแล้ว!")
+print("🦆 [DuckBlox UI] Ultra Smooth Custom UI โหลดสำเร็จแล้ว!")

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+  "runtime.version": "Luau",
+  "workspace.checkThirdParty": false,
+  "diagnostics.globals": [
+    "game",
+    "workspace",
+    "script",
+    "task",
+    "Vector3",
+    "CFrame",
+    "Instance",
+    "Color3",
+    "Enum",
+    "warn",
+    "tick",
+    "loadstring",
+    "spawn",
+    "wait",
+    "delay"
+  ]
+}
